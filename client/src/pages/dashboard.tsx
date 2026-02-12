@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
 import { IndianRupee, TrendingUp, TrendingDown, Plus, Plane, Car, FileCheck, CreditCard as CreditCardIcon, LayoutDashboard, AlertTriangle, Calendar, BarChart3 } from "lucide-react";
+import { useLocation } from "wouter";
 import type { CashTransaction, FlightBooking, CabBooking } from "@shared/schema";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -87,6 +88,7 @@ export default function Dashboard() {
     },
   });
 
+  const [, navigate] = useLocation();
   const stats = statsQuery.data;
   const transactions = transactionsQuery.data || [];
   const flights = flightsQuery.data || [];
@@ -270,7 +272,7 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
-        <Card className="cursor-pointer hover-elevate" data-testid="card-flights-count" onClick={() => window.location.href = '/flights'}>
+        <Card className="cursor-pointer hover-elevate" data-testid="card-flights-count" onClick={() => navigate('/flights')}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-muted-foreground">Flight Bookings</div>
@@ -282,7 +284,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover-elevate" data-testid="card-cabs-count" onClick={() => window.location.href = '/cabs'}>
+        <Card className="cursor-pointer hover-elevate" data-testid="card-cabs-count" onClick={() => navigate('/cabs')}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-muted-foreground">Cab Bookings</div>
@@ -294,7 +296,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer hover-elevate" data-testid="card-visa-count" onClick={() => window.location.href = '/visa'}>
+        <Card className="cursor-pointer hover-elevate" data-testid="card-visa-count" onClick={() => navigate('/visa')}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-muted-foreground">Visa Applications</div>
