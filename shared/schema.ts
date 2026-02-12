@@ -1,5 +1,5 @@
 
-import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, date, pgEnum, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -26,14 +26,19 @@ export const flightBookings = pgTable("flight_bookings", {
   id: serial("id").primaryKey(),
   clientName: text("client_name").notNull(),
   clientPhone: text("client_phone").notNull(),
+  referenceName: text("reference_name"),
+  referencePhone: text("reference_phone"),
   sector: text("sector").notNull(),
   travelDate: date("travel_date").notNull(),
   airline: text("airline").notNull(),
-  platform: text("platform").notNull(), // Dropdown value
-  platformNotes: text("platform_notes"), // If platform is 'Others'
+  platform: text("platform").notNull(),
+  platformNotes: text("platform_notes"),
   totalAmount: numeric("total_amount", { precision: 10, scale: 2 }).notNull(),
-  paymentMode: text("payment_mode").default("Cash"), // Cash, Credit/Pay Later, etc.
-  vendorId: integer("vendor_id"), // References vendors table
+  advancePaid: numeric("advance_paid", { precision: 10, scale: 2 }).default("0"),
+  paymentMode: text("payment_mode").default("Cash"),
+  vendorId: integer("vendor_id"),
+  reminderDate: date("reminder_date"),
+  reminderNote: text("reminder_note"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -49,6 +54,8 @@ export const cabBookings = pgTable("cab_bookings", {
   id: serial("id").primaryKey(),
   clientName: text("client_name").notNull(),
   clientPhone: text("client_phone").notNull(),
+  referenceName: text("reference_name"),
+  referencePhone: text("reference_phone"),
   travelDate: date("travel_date").notNull(),
   pickupLocation: text("pickup_location").notNull(),
   dropLocation: text("drop_location").notNull(),
@@ -57,6 +64,8 @@ export const cabBookings = pgTable("cab_bookings", {
   advanceAmount: numeric("advance_amount", { precision: 10, scale: 2 }).default("0").notNull(),
   paymentMode: text("payment_mode").default("Cash"),
   vendorId: integer("vendor_id"),
+  reminderDate: date("reminder_date"),
+  reminderNote: text("reminder_note"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -66,22 +75,22 @@ export const cabRuns = pgTable("cab_runs", {
   bookingId: integer("booking_id").references(() => cabBookings.id),
   clientName: text("client_name"),
   advanceAmount: numeric("advance_amount", { precision: 10, scale: 2 }).default("0"),
+  referenceName: text("reference_name"),
+  referencePhone: text("reference_phone"),
+
+  members: jsonb("members").default([]),
   
-  // Trip Details
   startKm: integer("start_km"),
   closingKm: integer("closing_km"),
   
-  // Return Trip Details
   isReturnTrip: boolean("is_return_trip").default(false),
   returnDate: date("return_date"),
   returnPassengers: integer("return_passengers"),
   returnClientName: text("return_client_name"),
 
-  // Financials
   returnAdvance: numeric("return_advance", { precision: 10, scale: 2 }).default("0"),
   driverCollection: numeric("driver_collection", { precision: 10, scale: 2 }).default("0"),
   
-  // Expenses
   expenseDiesel: numeric("expense_diesel", { precision: 10, scale: 2 }).default("0"),
   expenseToll: numeric("expense_toll", { precision: 10, scale: 2 }).default("0"),
   expenseParking: numeric("expense_parking", { precision: 10, scale: 2 }).default("0"),
@@ -199,6 +208,16 @@ export const attestationServicesRelations = relations(attestationServices, ({ on
     references: [vendors.id],
   }),
 }));
+
+// === MEMBER TYPE (for cab runs) ===
+export const cabRunMemberSchema = z.object({
+  name: z.string(),
+  phone: z.string().optional(),
+  referenceName: z.string().optional(),
+  referencePhone: z.string().optional(),
+  advancePaid: z.string().optional(),
+});
+export type CabRunMember = z.infer<typeof cabRunMemberSchema>;
 
 // === INSERTS ===
 export const insertCashTransactionSchema = createInsertSchema(cashTransactions).omit({ id: true, createdAt: true });

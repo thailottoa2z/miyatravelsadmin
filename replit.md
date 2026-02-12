@@ -5,9 +5,9 @@
 This is a full-stack Agency Management application for "Miya Travels," a travel agency business. The app manages multiple business operations including:
 
 - **Agency Cash Ledger** — Track cash in/out transactions with a running balance (starting ₹4,50,000)
-- **Flight Bookings** — Record client flight bookings across platforms (MakeMyTrip, Goibibo, etc.)
-- **Cab Bookings & Vehicle Management** — Manage vehicle fleet, cab bookings with advance/pending tracking
-- **Cab Runs** — Track individual cab trips with km readings, expenses, return trips, and driver settlements
+- **Flight Bookings** — Record client flight bookings with advance paid tracking, reference contacts, reminder/alert system, and edit capability
+- **Cab Bookings & Vehicle Management** — Manage vehicle fleet, cab bookings with advance/pending tracking, reference contacts, reminders, and edit capability
+- **Cab Runs** — Track individual cab trips with multiple members (infinite add), km readings, expenses, return trips, driver settlements, reference contacts, and edit capability
 - **Visa Applications** — Track work visa applications with medical status and process status workflows
 - **Credit Cards** — Monitor credit card usage, limits, and repayments
 - **Vendor Management** — Track vendor balances and payments (for Credit/Pay Later bookings)
@@ -66,6 +66,9 @@ The frontend uses a sidebar layout (`AppSidebar`) with page-level components in 
 3. **Numeric handling** — Monetary values use PostgreSQL `numeric(10,2)` type; amounts are converted between string and number at the API boundary
 4. **Vehicle plate management** — Vehicles are a separate table with unique car numbers; cab bookings reference them by ID
 5. **Vendor credit tracking** — Flight and cab bookings can reference vendors for "Credit/Pay Later" payment modes; vendor balances are computed from bookings minus payments
+6. **Cab Run Members** — Cab runs support unlimited members stored as JSONB array; each member has name, phone, referenceName, referencePhone, advancePaid
+7. **Edit capability** — Flight bookings, cab bookings, and cab runs all support editing after creation via PUT endpoints
+8. **Reminders & Alerts** — Flight and cab bookings support reminder dates/notes; upcoming bookings (within 2 days) and due reminders shown as alert cards
 
 ## External Dependencies
 

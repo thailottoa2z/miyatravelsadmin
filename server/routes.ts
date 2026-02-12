@@ -42,9 +42,33 @@ export async function registerRoutes(
 
   app.post(api.flights.create.path, async (req, res) => {
     try {
+      if (req.body.reminderDate === "") req.body.reminderDate = null;
+      if (req.body.reminderNote === "") req.body.reminderNote = null;
+      if (req.body.referenceName === "") req.body.referenceName = null;
+      if (req.body.referencePhone === "") req.body.referencePhone = null;
+      if (req.body.platformNotes === "") req.body.platformNotes = null;
       const input = api.flights.create.input.parse(req.body);
       const flight = await storage.createFlightBooking(input);
       res.status(201).json(flight);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  app.put(api.flights.update.path, async (req, res) => {
+    try {
+      if (req.body.reminderDate === "") req.body.reminderDate = null;
+      if (req.body.reminderNote === "") req.body.reminderNote = null;
+      if (req.body.referenceName === "") req.body.referenceName = null;
+      if (req.body.referencePhone === "") req.body.referencePhone = null;
+      if (req.body.platformNotes === "") req.body.platformNotes = null;
+      const input = api.flights.update.input.parse(req.body);
+      const flight = await storage.updateFlightBooking(Number(req.params.id), input);
+      if (!flight) return res.status(404).json({ message: "Flight booking not found" });
+      res.json(flight);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -85,10 +109,15 @@ export async function registerRoutes(
 
   app.post(api.cabBookings.create.path, async (req, res) => {
     try {
+      if (req.body.reminderDate === "") req.body.reminderDate = null;
+      if (req.body.reminderNote === "") req.body.reminderNote = null;
+      if (req.body.referenceName === "") req.body.referenceName = null;
+      if (req.body.referencePhone === "") req.body.referencePhone = null;
       const input = api.cabBookings.create.input.parse(req.body);
       const booking = await storage.createCabBooking(input);
       res.status(201).json(booking);
     } catch (err) {
+      console.error("Cab booking create error:", err);
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
       }
@@ -98,6 +127,10 @@ export async function registerRoutes(
 
   app.put(api.cabBookings.update.path, async (req, res) => {
     try {
+      if (req.body.reminderDate === "") req.body.reminderDate = null;
+      if (req.body.reminderNote === "") req.body.reminderNote = null;
+      if (req.body.referenceName === "") req.body.referenceName = null;
+      if (req.body.referencePhone === "") req.body.referencePhone = null;
       const input = api.cabBookings.update.input.parse(req.body);
       const booking = await storage.updateCabBooking(Number(req.params.id), input);
       if (!booking) return res.status(404).json({ message: "Booking not found" });
@@ -121,6 +154,20 @@ export async function registerRoutes(
       const input = api.cabRuns.create.input.parse(req.body);
       const run = await storage.createCabRun(input);
       res.status(201).json(run);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  app.put(api.cabRuns.update.path, async (req, res) => {
+    try {
+      const input = api.cabRuns.update.input.parse(req.body);
+      const run = await storage.updateCabRun(Number(req.params.id), input);
+      if (!run) return res.status(404).json({ message: "Cab run not found" });
+      res.json(run);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });

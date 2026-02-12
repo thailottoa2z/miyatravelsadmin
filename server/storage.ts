@@ -19,6 +19,7 @@ export interface IStorage {
   // Flights
   getFlightBookings(): Promise<FlightBooking[]>;
   createFlightBooking(data: InsertFlightBooking): Promise<FlightBooking>;
+  updateFlightBooking(id: number, data: Partial<InsertFlightBooking>): Promise<FlightBooking | undefined>;
   deleteFlightBooking(id: number): Promise<void>;
 
   // Vehicles
@@ -34,6 +35,7 @@ export interface IStorage {
   // Cab Runs
   getCabRuns(): Promise<CabRun[]>;
   createCabRun(data: InsertCabRun): Promise<CabRun>;
+  updateCabRun(id: number, data: Partial<InsertCabRun>): Promise<CabRun | undefined>;
   
   // Visa
   getVisaApplications(search?: string): Promise<VisaApplication[]>;
@@ -94,6 +96,11 @@ export class DatabaseStorage implements IStorage {
     return booking;
   }
 
+  async updateFlightBooking(id: number, data: Partial<InsertFlightBooking>): Promise<FlightBooking | undefined> {
+    const [updated] = await db.update(flightBookings).set(data).where(eq(flightBookings.id, id)).returning();
+    return updated;
+  }
+
   async deleteFlightBooking(id: number): Promise<void> {
     await db.delete(flightBookings).where(eq(flightBookings.id, id));
   }
@@ -140,6 +147,11 @@ export class DatabaseStorage implements IStorage {
   async createCabRun(data: InsertCabRun): Promise<CabRun> {
     const [run] = await db.insert(cabRuns).values(data).returning();
     return run;
+  }
+
+  async updateCabRun(id: number, data: Partial<InsertCabRun>): Promise<CabRun | undefined> {
+    const [updated] = await db.update(cabRuns).set(data).where(eq(cabRuns.id, id)).returning();
+    return updated;
   }
 
   async getVisaApplications(search?: string): Promise<VisaApplication[]> {

@@ -79,6 +79,15 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/flight-bookings/:id' as const,
+      input: insertFlightBookingSchema.partial(),
+      responses: {
+        200: z.custom<typeof flightBookings.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
     delete: {
       method: 'DELETE' as const,
       path: '/api/flight-bookings/:id' as const,
@@ -148,6 +157,15 @@ export const api = {
       responses: {
         201: z.custom<typeof cabRuns.$inferSelect>(),
         400: errorSchemas.validation,
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/cab-runs/:id' as const,
+      input: insertCabRunSchema.partial(),
+      responses: {
+        200: z.custom<typeof cabRuns.$inferSelect>(),
+        404: errorSchemas.notFound,
       },
     },
   },
