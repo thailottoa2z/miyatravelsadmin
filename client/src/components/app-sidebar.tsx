@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
   SidebarHeader,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Plane, Car, Route, CreditCard, Users, FileCheck } from "lucide-react";
+import { LayoutDashboard, Plane, Car, Route, CreditCard, Users, FileCheck, Stamp } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 const navItems = [
@@ -18,6 +18,7 @@ const navItems = [
   { title: "Flight Bookings", url: "/flights", icon: Plane },
   { title: "Cab Bookings", url: "/cabs", icon: Car },
   { title: "Cab Runs", url: "/cab-runs", icon: Route },
+  { title: "Attestation", url: "/attestation", icon: Stamp },
   { title: "Credit Cards", url: "/credit-cards", icon: CreditCard },
   { title: "Vendors", url: "/vendors", icon: Users },
   { title: "Work Visa", url: "/visa", icon: FileCheck },

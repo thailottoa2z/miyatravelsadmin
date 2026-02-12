@@ -231,6 +231,38 @@ export async function registerRoutes(
     }
   });
 
+  // === ATTESTATION SERVICES ===
+  app.get(api.attestation.list.path, async (req, res) => {
+    const services = await storage.getAttestationServices();
+    res.json(services);
+  });
+
+  app.post(api.attestation.create.path, async (req, res) => {
+    try {
+      const input = api.attestation.create.input.parse(req.body);
+      const service = await storage.createAttestationService(input);
+      if (input.paymentMode === 'Cash' && Number(input.advanceReceived || 0) > 0) {
+        await storage.createCashTransaction({
+          type: 'in',
+          personName: input.clientName,
+          amount: String(input.advanceReceived || "0"),
+          reason: `Attestation Advance - ${input.documentType} (${input.targetCountry})`,
+        });
+      }
+      res.status(201).json(service);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  app.delete(api.attestation.delete.path, async (req, res) => {
+    await storage.deleteAttestationService(Number(req.params.id));
+    res.sendStatus(204);
+  });
+
   // === GLOBAL SEARCH ===
   app.get(api.globalSearch.search.path, async (req, res) => {
     const q = req.query.q as string;

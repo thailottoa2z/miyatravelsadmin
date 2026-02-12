@@ -1,11 +1,11 @@
 
 import { 
   cashTransactions, flightBookings, vehicles, cabBookings, cabRuns, visaApplications,
-  creditCards, vendors, vendorPayments,
+  creditCards, vendors, vendorPayments, attestationServices,
   type InsertCashTransaction, type InsertFlightBooking, type InsertVehicle, type InsertCabBooking, type InsertCabRun, type InsertVisaApplication,
-  type InsertCreditCard, type InsertVendor, type InsertVendorPayment,
+  type InsertCreditCard, type InsertVendor, type InsertVendorPayment, type InsertAttestationService,
   type CashTransaction, type FlightBooking, type Vehicle, type CabBooking, type CabRun, type VisaApplication,
-  type CreditCard, type Vendor, type VendorPayment
+  type CreditCard, type Vendor, type VendorPayment, type AttestationService
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, ilike, or } from "drizzle-orm";
@@ -51,6 +51,11 @@ export interface IStorage {
   recordVendorPayment(data: InsertVendorPayment): Promise<VendorPayment>;
   updateVendorBalance(id: number, amount: number): Promise<void>;
   
+  // Attestation Services
+  getAttestationServices(): Promise<AttestationService[]>;
+  createAttestationService(data: InsertAttestationService): Promise<AttestationService>;
+  deleteAttestationService(id: number): Promise<void>;
+
   // Global Search
   searchGlobal(query: string): Promise<{ visa: VisaApplication[], flights: FlightBooking[], cabs: CabBooking[] }>;
 }
@@ -200,6 +205,22 @@ export class DatabaseStorage implements IStorage {
       const newOwed = Number(vendor.totalOwed) + amount;
       await db.update(vendors).set({ totalOwed: newOwed.toString() }).where(eq(vendors.id, id));
     }
+  }
+
+  async getAttestationServices(): Promise<AttestationService[]> {
+    return await db.select().from(attestationServices).orderBy(desc(attestationServices.createdAt));
+  }
+
+  async createAttestationService(data: InsertAttestationService): Promise<AttestationService> {
+    const [service] = await db.insert(attestationServices).values(data).returning();
+    if (data.paymentMode === 'Credit/Pay Later' && data.vendorId) {
+      await this.updateVendorBalance(data.vendorId, Number(data.serviceCharge));
+    }
+    return service;
+  }
+
+  async deleteAttestationService(id: number): Promise<void> {
+    await db.delete(attestationServices).where(eq(attestationServices.id, id));
   }
 
   async searchGlobal(query: string): Promise<{ visa: VisaApplication[], flights: FlightBooking[], cabs: CabBooking[] }> {

@@ -9,7 +9,8 @@ import {
   insertVisaApplicationSchema, visaApplications,
   insertCreditCardSchema, creditCards,
   insertVendorSchema, vendors,
-  insertVendorPaymentSchema, vendorPayments
+  insertVendorPaymentSchema, vendorPayments,
+  insertAttestationServiceSchema, attestationServices
 } from './schema';
 
 // ============================================
@@ -238,6 +239,32 @@ export const api = {
         404: errorSchemas.notFound,
       },
     }
+  },
+  attestation: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/attestation-services' as const,
+      responses: {
+        200: z.array(z.custom<typeof attestationServices.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/attestation-services' as const,
+      input: insertAttestationServiceSchema,
+      responses: {
+        201: z.custom<typeof attestationServices.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/attestation-services/:id' as const,
+      responses: {
+        204: z.void(),
+        404: errorSchemas.notFound,
+      },
+    },
   },
   globalSearch: {
     search: {

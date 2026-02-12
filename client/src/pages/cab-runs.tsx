@@ -1,7 +1,7 @@
 
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,11 +23,11 @@ export default function CabRuns() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    bookingId: "", startKm: "", closingKm: "",
+    bookingId: "", clientName: "", advanceAmount: "0",
+    startKm: "", closingKm: "",
     isReturnTrip: false, returnDate: "", returnPassengers: "", returnClientName: "", returnAdvance: "0",
     driverCollection: "0", expenseDiesel: "0", expenseToll: "0", expenseParking: "0", expenseOthers: "0", driverSalary: "0",
   });
-  const [syncedAdvance, setSyncedAdvance] = useState("0");
 
   const query = useQuery<CabRun[]>({ queryKey: ["/api/cab-runs"] });
   const bookingsQuery = useQuery<CabBooking[]>({ queryKey: ["/api/cab-bookings"] });
@@ -36,7 +36,11 @@ export default function CabRuns() {
     if (form.bookingId) {
       const booking = (bookingsQuery.data || []).find((b) => b.id === Number(form.bookingId));
       if (booking) {
-        setSyncedAdvance(String(booking.advanceAmount));
+        setForm((f) => ({
+          ...f,
+          clientName: booking.clientName,
+          advanceAmount: String(booking.advanceAmount),
+        }));
       }
     }
   }, [form.bookingId, bookingsQuery.data]);
@@ -44,7 +48,9 @@ export default function CabRuns() {
   const createMut = useMutation({
     mutationFn: async () => {
       const body: any = {
-        bookingId: Number(form.bookingId),
+        bookingId: form.bookingId ? Number(form.bookingId) : null,
+        clientName: form.clientName || null,
+        advanceAmount: form.advanceAmount || "0",
         startKm: form.startKm ? Number(form.startKm) : null,
         closingKm: form.closingKm ? Number(form.closingKm) : null,
         isReturnTrip: form.isReturnTrip,
@@ -64,7 +70,7 @@ export default function CabRuns() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cab-runs"] });
       setOpen(false);
-      setForm({ bookingId: "", startKm: "", closingKm: "", isReturnTrip: false, returnDate: "", returnPassengers: "", returnClientName: "", returnAdvance: "0", driverCollection: "0", expenseDiesel: "0", expenseToll: "0", expenseParking: "0", expenseOthers: "0", driverSalary: "0" });
+      setForm({ bookingId: "", clientName: "", advanceAmount: "0", startKm: "", closingKm: "", isReturnTrip: false, returnDate: "", returnPassengers: "", returnClientName: "", returnAdvance: "0", driverCollection: "0", expenseDiesel: "0", expenseToll: "0", expenseParking: "0", expenseOthers: "0", driverSalary: "0" });
       toast({ title: "Cab run created" });
     },
     onError: () => toast({ title: "Error", variant: "destructive" }),
@@ -72,7 +78,7 @@ export default function CabRuns() {
 
   const setField = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
 
-  const onwardAdv = Number(syncedAdvance || 0);
+  const onwardAdv = Number(form.advanceAmount || 0);
   const returnAdv = Number(form.returnAdvance || 0);
   const driverCol = Number(form.driverCollection || 0);
   const totalCollection = onwardAdv + returnAdv + driverCol;
@@ -91,10 +97,11 @@ export default function CabRuns() {
             <DialogHeader><DialogTitle>New Cab Run</DialogTitle></DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); createMut.mutate(); }} className="space-y-4">
               <div>
-                <Label>Select Cab Booking</Label>
-                <Select value={form.bookingId} onValueChange={(v) => setField("bookingId", v)}>
-                  <SelectTrigger data-testid="select-run-booking"><SelectValue placeholder="Select booking" /></SelectTrigger>
+                <Label>Link to Booking (Optional)</Label>
+                <Select value={form.bookingId} onValueChange={(v) => { if (v === "none") { setField("bookingId", ""); } else { setField("bookingId", v); } }}>
+                  <SelectTrigger data-testid="select-run-booking"><SelectValue placeholder="Select booking or enter manually" /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">-- Enter Manually --</SelectItem>
                     {(bookingsQuery.data || []).map((b) => (
                       <SelectItem key={b.id} value={String(b.id)}>{b.clientName} - {b.travelDate}</SelectItem>
                     ))}
@@ -102,11 +109,8 @@ export default function CabRuns() {
                 </Select>
               </div>
 
-              {form.bookingId && (
-                <div className="text-sm text-muted-foreground">
-                  Synced Advance: {formatINR(onwardAdv)}
-                </div>
-              )}
+              <div><Label>Client Name</Label><Input value={form.clientName} onChange={(e) => setField("clientName", e.target.value)} placeholder="Enter client name" required data-testid="input-run-client-name" /></div>
+              <div><Label>Advance Amount (INR)</Label><Input type="number" value={form.advanceAmount} onChange={(e) => setField("advanceAmount", e.target.value)} data-testid="input-run-advance" /></div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Start KM</Label><Input type="number" value={form.startKm} onChange={(e) => setField("startKm", e.target.value)} data-testid="input-run-start-km" /></div>
@@ -168,7 +172,8 @@ export default function CabRuns() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Booking</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Advance</TableHead>
                   <TableHead>KM</TableHead>
                   <TableHead>Return</TableHead>
                   <TableHead>Collection</TableHead>
@@ -179,13 +184,16 @@ export default function CabRuns() {
               </TableHeader>
               <TableBody>
                 {(query.data || []).map((r) => {
-                  const booking = (bookingsQuery.data || []).find((b) => b.id === r.bookingId);
-                  const col = Number(booking?.advanceAmount || 0) + Number(r.returnAdvance || 0) + Number(r.driverCollection || 0);
+                  const booking = r.bookingId ? (bookingsQuery.data || []).find((b) => b.id === r.bookingId) : null;
+                  const name = r.clientName || booking?.clientName || `#${r.bookingId || "?"}`;
+                  const adv = Number(r.advanceAmount || booking?.advanceAmount || 0);
+                  const col = adv + Number(r.returnAdvance || 0) + Number(r.driverCollection || 0);
                   const exp = Number(r.expenseDiesel || 0) + Number(r.expenseToll || 0) + Number(r.expenseParking || 0) + Number(r.expenseOthers || 0) + Number(r.driverSalary || 0);
                   const km = (r.closingKm && r.startKm) ? r.closingKm - r.startKm : null;
                   return (
                     <TableRow key={r.id} data-testid={`row-run-${r.id}`}>
-                      <TableCell className="font-medium">{booking?.clientName || `#${r.bookingId}`}</TableCell>
+                      <TableCell className="font-medium">{name}</TableCell>
+                      <TableCell>{formatINR(adv)}</TableCell>
                       <TableCell>{km !== null ? `${km} km` : "-"}</TableCell>
                       <TableCell>{r.isReturnTrip ? `${r.returnClientName || "Yes"}` : "No"}</TableCell>
                       <TableCell>{formatINR(col)}</TableCell>
@@ -195,7 +203,7 @@ export default function CabRuns() {
                     </TableRow>
                   );
                 })}
-                {(query.data || []).length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">No cab runs yet</TableCell></TableRow>}
+                {(query.data || []).length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No cab runs yet</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>

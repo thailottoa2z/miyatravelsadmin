@@ -20,6 +20,7 @@ import CabRuns from "@/pages/cab-runs";
 import CreditCards from "@/pages/credit-cards";
 import Vendors from "@/pages/vendors";
 import VisaApplications from "@/pages/visa-applications";
+import AttestationServices from "@/pages/attestation-services";
 import GlobalSearchResults from "@/pages/global-search";
 import NotFound from "@/pages/not-found";
 
@@ -65,6 +66,7 @@ function Router() {
       <Route path="/flights" component={FlightBookings} />
       <Route path="/cabs" component={CabBookings} />
       <Route path="/cab-runs" component={CabRuns} />
+      <Route path="/attestation" component={AttestationServices} />
       <Route path="/credit-cards" component={CreditCards} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/visa" component={VisaApplications} />
