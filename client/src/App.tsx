@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sun, Moon, Search } from "lucide-react";
 import { useState } from "react";
+import { useLocation as useWouterLocation } from "wouter";
 
 import Dashboard from "@/pages/dashboard";
 import FlightBookings from "@/pages/flight-bookings";
@@ -33,10 +34,11 @@ function ThemeToggle() {
 
 function GlobalSearch() {
   const [query, setQuery] = useState("");
+  const [, navigate] = useWouterLocation();
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
+      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
     }
   };
   return (
