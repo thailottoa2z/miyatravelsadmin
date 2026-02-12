@@ -32,6 +32,8 @@ export const flightBookings = pgTable("flight_bookings", {
   platform: text("platform").notNull(), // Dropdown value
   platformNotes: text("platform_notes"), // If platform is 'Others'
   totalAmount: numeric("total_amount", { precision: 10, scale: 2 }).notNull(),
+  paymentMode: text("payment_mode").default("Cash"), // Cash, Credit/Pay Later, etc.
+  vendorId: integer("vendor_id"), // References vendors table
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -53,7 +55,8 @@ export const cabBookings = pgTable("cab_bookings", {
   vehicleId: integer("vehicle_id").references(() => vehicles.id),
   totalAmount: numeric("total_amount", { precision: 10, scale: 2 }).notNull(),
   advanceAmount: numeric("advance_amount", { precision: 10, scale: 2 }).default("0").notNull(),
-  // Pending amount is calculated: Total - Advance
+  paymentMode: text("payment_mode").default("Cash"),
+  vendorId: integer("vendor_id"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -61,6 +64,10 @@ export const cabBookings = pgTable("cab_bookings", {
 export const cabRuns = pgTable("cab_runs", {
   id: serial("id").primaryKey(),
   bookingId: integer("booking_id").references(() => cabBookings.id).notNull(),
+  
+  // Trip Details
+  startKm: integer("start_km"),
+  closingKm: integer("closing_km"),
   
   // Return Trip Details
   isReturnTrip: boolean("is_return_trip").default(false),
@@ -95,6 +102,37 @@ export const visaApplications = pgTable("visa_applications", {
   pccStatus: processStatusEnum("pcc_status").default("locked").notNull(),
   stampingStatus: processStatusEnum("stamping_status").default("locked").notNull(),
   
+  paymentMode: text("payment_mode").default("Cash"),
+  vendorId: integer("vendor_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// 7. Credit Cards
+export const creditCards = pgTable("credit_cards", {
+  id: serial("id").primaryKey(),
+  cardName: text("card_name").notNull(),
+  bankName: text("bank_name").notNull(),
+  totalLimit: numeric("total_limit", { precision: 10, scale: 2 }).notNull(),
+  usedAmount: numeric("used_amount", { precision: 10, scale: 2 }).default("0").notNull(),
+  nextBillDate: date("next_bill_date").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// 8. Vendors
+export const vendors = pgTable("vendors", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  totalOwed: numeric("total_owed", { precision: 10, scale: 2 }).default("0").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// 9. Vendor Payments
+export const vendorPayments = pgTable("vendor_payments", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").references(() => vendors.id).notNull(),
+  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentDate: date("payment_date").notNull(),
+  notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -105,6 +143,24 @@ export const cabBookingsRelations = relations(cabBookings, ({ one, many }) => ({
     references: [vehicles.id],
   }),
   runs: many(cabRuns),
+  vendor: one(vendors, {
+    fields: [cabBookings.vendorId],
+    references: [vendors.id],
+  }),
+}));
+
+export const flightBookingsRelations = relations(flightBookings, ({ one }) => ({
+  vendor: one(vendors, {
+    fields: [flightBookings.vendorId],
+    references: [vendors.id],
+  }),
+}));
+
+export const visaApplicationsRelations = relations(visaApplications, ({ one }) => ({
+  vendor: one(vendors, {
+    fields: [visaApplications.vendorId],
+    references: [vendors.id],
+  }),
 }));
 
 export const cabRunsRelations = relations(cabRuns, ({ one }) => ({
@@ -114,6 +170,10 @@ export const cabRunsRelations = relations(cabRuns, ({ one }) => ({
   }),
 }));
 
+export const vendorsRelations = relations(vendors, ({ many }) => ({
+  payments: many(vendorPayments),
+}));
+
 // === INSERTS ===
 export const insertCashTransactionSchema = createInsertSchema(cashTransactions).omit({ id: true, createdAt: true });
 export const insertFlightBookingSchema = createInsertSchema(flightBookings).omit({ id: true, createdAt: true });
@@ -121,25 +181,19 @@ export const insertVehicleSchema = createInsertSchema(vehicles).omit({ id: true,
 export const insertCabBookingSchema = createInsertSchema(cabBookings).omit({ id: true, createdAt: true });
 export const insertCabRunSchema = createInsertSchema(cabRuns).omit({ id: true, createdAt: true });
 export const insertVisaApplicationSchema = createInsertSchema(visaApplications).omit({ id: true, createdAt: true });
+export const insertCreditCardSchema = createInsertSchema(creditCards).omit({ id: true, createdAt: true });
+export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
+export const insertVendorPaymentSchema = createInsertSchema(vendorPayments).omit({ id: true, createdAt: true });
 
 // === EXPLICIT TYPES ===
 export type CashTransaction = typeof cashTransactions.$inferSelect;
-export type InsertCashTransaction = z.infer<typeof insertCashTransactionSchema>;
-
 export type FlightBooking = typeof flightBookings.$inferSelect;
-export type InsertFlightBooking = z.infer<typeof insertFlightBookingSchema>;
-
 export type Vehicle = typeof vehicles.$inferSelect;
-export type InsertVehicle = z.infer<typeof insertVehicleSchema>;
-
 export type CabBooking = typeof cabBookings.$inferSelect;
-export type InsertCabBooking = z.infer<typeof insertCabBookingSchema>;
-
 export type CabRun = typeof cabRuns.$inferSelect;
-export type InsertCabRun = z.infer<typeof insertCabRunSchema>;
-
 export type VisaApplication = typeof visaApplications.$inferSelect;
-export type InsertVisaApplication = z.infer<typeof insertVisaApplicationSchema>;
+export type CreditCard = typeof creditCards.$inferSelect;
+export type Vendor = typeof vendors.$inferSelect;
+export type VendorPayment = typeof vendorPayments.$inferSelect;
 
-// Derived Types for responses
-export type CabBookingWithVehicle = CabBooking & { vehicle: Vehicle | null };
+export type CabBookingWithVehicle = CabBooking & { vehicle: Vehicle | null; vendor: Vendor | null };

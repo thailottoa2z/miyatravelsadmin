@@ -1,8 +1,11 @@
 
 import { 
   cashTransactions, flightBookings, vehicles, cabBookings, cabRuns, visaApplications,
+  creditCards, vendors, vendorPayments,
   type InsertCashTransaction, type InsertFlightBooking, type InsertVehicle, type InsertCabBooking, type InsertCabRun, type InsertVisaApplication,
-  type CashTransaction, type FlightBooking, type Vehicle, type CabBooking, type CabRun, type VisaApplication
+  type InsertCreditCard, type InsertVendor, type InsertVendorPayment,
+  type CashTransaction, type FlightBooking, type Vehicle, type CabBooking, type CabRun, type VisaApplication,
+  type CreditCard, type Vendor, type VendorPayment
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, ilike, or } from "drizzle-orm";
@@ -36,6 +39,17 @@ export interface IStorage {
   getVisaApplications(search?: string): Promise<VisaApplication[]>;
   createVisaApplication(data: InsertVisaApplication): Promise<VisaApplication>;
   updateVisaApplication(id: number, data: Partial<InsertVisaApplication>): Promise<VisaApplication | undefined>;
+
+  // Credit Cards
+  getCreditCards(): Promise<CreditCard[]>;
+  createCreditCard(data: InsertCreditCard): Promise<CreditCard>;
+  repayCreditCard(id: number, amount: number): Promise<CreditCard | undefined>;
+
+  // Vendors
+  getVendors(): Promise<Vendor[]>;
+  createVendor(data: InsertVendor): Promise<Vendor>;
+  recordVendorPayment(data: InsertVendorPayment): Promise<VendorPayment>;
+  updateVendorBalance(id: number, amount: number): Promise<void>;
   
   // Global Search
   searchGlobal(query: string): Promise<{ visa: VisaApplication[], flights: FlightBooking[], cabs: CabBooking[] }>;
@@ -55,21 +69,11 @@ export class DatabaseStorage implements IStorage {
     const transactions = await this.getCashTransactions();
     let totalIn = 0;
     let totalOut = 0;
-    
-    // Seed amount logic: The requirements say "Starting ₹4,50,000". 
-    // We should treat this as the base.
-    // If no transactions, balance is 450000.
-    // Ideally we insert an initial transaction, but calculating on fly is fine too.
-    
-    // Let's assume the 450k is an initial "In" transaction we seed, or just a base constant.
-    // For simpler logic, let's just sum In and Out.
-    
     for (const t of transactions) {
       const amt = Number(t.amount);
       if (t.type === 'in') totalIn += amt;
       else totalOut += amt;
     }
-
     return { totalBalance: totalIn - totalOut, totalIn, totalOut };
   }
 
@@ -79,6 +83,9 @@ export class DatabaseStorage implements IStorage {
 
   async createFlightBooking(data: InsertFlightBooking): Promise<FlightBooking> {
     const [booking] = await db.insert(flightBookings).values(data).returning();
+    if (data.paymentMode === 'Credit/Pay Later' && data.vendorId) {
+      await this.updateVendorBalance(data.vendorId, Number(data.totalAmount));
+    }
     return booking;
   }
 
@@ -91,21 +98,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createVehicle(data: InsertVehicle): Promise<Vehicle> {
-    const [vehicle] = await db.insert(vehicles).values(data).returning();
+    const [vehicle] = await db.insert(vehicles).values({ ...data, carNumber: data.carNumber.toUpperCase() }).returning();
     return vehicle;
   }
 
   async getCabBookings(): Promise<(CabBooking & { vehicle: Vehicle | null })[]> {
     return await db.query.cabBookings.findMany({
       orderBy: [desc(cabBookings.createdAt)],
-      with: {
-        vehicle: true
-      }
+      with: { vehicle: true }
     });
   }
 
   async createCabBooking(data: InsertCabBooking): Promise<CabBooking> {
     const [booking] = await db.insert(cabBookings).values(data).returning();
+    if (data.paymentMode === 'Credit/Pay Later' && data.vendorId) {
+      await this.updateVendorBalance(data.vendorId, Number(data.totalAmount));
+    }
     return booking;
   }
 
@@ -130,9 +138,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVisaApplications(search?: string): Promise<VisaApplication[]> {
-    if (!search) {
-      return await db.select().from(visaApplications).orderBy(desc(visaApplications.createdAt));
-    }
+    if (!search) return await db.select().from(visaApplications).orderBy(desc(visaApplications.createdAt));
     const searchLower = `%${search.toLowerCase()}%`;
     return await db.select().from(visaApplications).where(
       or(
@@ -145,6 +151,9 @@ export class DatabaseStorage implements IStorage {
 
   async createVisaApplication(data: InsertVisaApplication): Promise<VisaApplication> {
     const [app] = await db.insert(visaApplications).values(data).returning();
+    if (data.paymentMode === 'Credit/Pay Later' && data.vendorId) {
+      // Need a price for visa apps if we're tracking owed, let's assume totalAmount is 0 for now or handled elsewhere
+    }
     return app;
   }
 
@@ -153,31 +162,53 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async getCreditCards(): Promise<CreditCard[]> {
+    return await db.select().from(creditCards).orderBy(desc(creditCards.createdAt));
+  }
+
+  async createCreditCard(data: InsertCreditCard): Promise<CreditCard> {
+    const [card] = await db.insert(creditCards).values(data).returning();
+    return card;
+  }
+
+  async repayCreditCard(id: number, amount: number): Promise<CreditCard | undefined> {
+    const [card] = await db.select().from(creditCards).where(eq(creditCards.id, id));
+    if (!card) return undefined;
+    const newUsed = Math.max(0, Number(card.usedAmount) - amount);
+    const [updated] = await db.update(creditCards).set({ usedAmount: newUsed.toString() }).where(eq(creditCards.id, id)).returning();
+    return updated;
+  }
+
+  async getVendors(): Promise<Vendor[]> {
+    return await db.select().from(vendors).orderBy(desc(vendors.createdAt));
+  }
+
+  async createVendor(data: InsertVendor): Promise<Vendor> {
+    const [vendor] = await db.insert(vendors).values(data).returning();
+    return vendor;
+  }
+
+  async recordVendorPayment(data: InsertVendorPayment): Promise<VendorPayment> {
+    const [payment] = await db.insert(vendorPayments).values(data).returning();
+    await this.updateVendorBalance(data.vendorId, -Number(data.amount));
+    return payment;
+  }
+
+  async updateVendorBalance(id: number, amount: number): Promise<void> {
+    const [vendor] = await db.select().from(vendors).where(eq(vendors.id, id));
+    if (vendor) {
+      const newOwed = Number(vendor.totalOwed) + amount;
+      await db.update(vendors).set({ totalOwed: newOwed.toString() }).where(eq(vendors.id, id));
+    }
+  }
+
   async searchGlobal(query: string): Promise<{ visa: VisaApplication[], flights: FlightBooking[], cabs: CabBooking[] }> {
     const searchLower = `%${query.toLowerCase()}%`;
-    
     const [visa, flights, cabs] = await Promise.all([
-      db.select().from(visaApplications).where(
-        or(
-          ilike(visaApplications.clientName, searchLower),
-          ilike(visaApplications.passportNumber, searchLower),
-          ilike(visaApplications.phone, searchLower)
-        )
-      ).limit(5),
-      db.select().from(flightBookings).where(
-        or(
-          ilike(flightBookings.clientName, searchLower),
-          ilike(flightBookings.clientPhone, searchLower)
-        )
-      ).limit(5),
-      db.select().from(cabBookings).where(
-        or(
-          ilike(cabBookings.clientName, searchLower),
-          ilike(cabBookings.clientPhone, searchLower)
-        )
-      ).limit(5)
+      db.select().from(visaApplications).where(or(ilike(visaApplications.clientName, searchLower), ilike(visaApplications.passportNumber, searchLower), ilike(visaApplications.phone, searchLower))).limit(5),
+      db.select().from(flightBookings).where(or(ilike(flightBookings.clientName, searchLower), ilike(flightBookings.clientPhone, searchLower))).limit(5),
+      db.select().from(cabBookings).where(or(ilike(cabBookings.clientName, searchLower), ilike(cabBookings.clientPhone, searchLower))).limit(5)
     ]);
-
     return { visa, flights, cabs };
   }
 }

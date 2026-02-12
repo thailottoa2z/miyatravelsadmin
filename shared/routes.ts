@@ -6,7 +6,10 @@ import {
   insertVehicleSchema, vehicles,
   insertCabBookingSchema, cabBookings,
   insertCabRunSchema, cabRuns,
-  insertVisaApplicationSchema, visaApplications 
+  insertVisaApplicationSchema, visaApplications,
+  insertCreditCardSchema, creditCards,
+  insertVendorSchema, vendors,
+  insertVendorPaymentSchema, vendorPayments
 } from './schema';
 
 // ============================================
@@ -181,6 +184,60 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+  },
+  creditCards: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/credit-cards' as const,
+      responses: {
+        200: z.array(z.custom<typeof creditCards.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/credit-cards' as const,
+      input: insertCreditCardSchema,
+      responses: {
+        201: z.custom<typeof creditCards.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    repay: {
+      method: 'POST' as const,
+      path: '/api/credit-cards/:id/repay' as const,
+      input: z.object({ amount: z.coerce.number() }),
+      responses: {
+        200: z.custom<typeof creditCards.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    }
+  },
+  vendors: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/vendors' as const,
+      responses: {
+        200: z.array(z.custom<typeof vendors.$inferSelect>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/vendors' as const,
+      input: insertVendorSchema,
+      responses: {
+        201: z.custom<typeof vendors.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    recordPayment: {
+      method: 'POST' as const,
+      path: '/api/vendors/:id/payments' as const,
+      input: insertVendorPaymentSchema,
+      responses: {
+        201: z.custom<typeof vendorPayments.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    }
   },
   globalSearch: {
     search: {

@@ -75,7 +75,6 @@ export async function registerRoutes(
        if (err instanceof z.ZodError) {
         res.status(400).json({ message: err.errors[0].message });
       } else {
-        // Handle duplicate car number error
         res.status(500).json({ message: "Internal Server Error or Duplicate Car Number" });
       }
     }
@@ -172,6 +171,75 @@ export async function registerRoutes(
     }
   });
 
+  // === CREDIT CARDS ===
+  app.get(api.creditCards.list.path, async (req, res) => {
+    const cards = await storage.getCreditCards();
+    res.json(cards);
+  });
+
+  app.post(api.creditCards.create.path, async (req, res) => {
+    try {
+      const input = api.creditCards.create.input.parse(req.body);
+      const card = await storage.createCreditCard(input);
+      res.status(201).json(card);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ message: err.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    }
+  });
+
+  app.post(api.creditCards.repay.path, async (req, res) => {
+    try {
+      const { amount } = api.creditCards.repay.input.parse(req.body);
+      const card = await storage.repayCreditCard(Number(req.params.id), amount);
+      if (!card) return res.status(404).json({ message: "Card not found" });
+      res.json(card);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ message: err.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    }
+  });
+
+  // === VENDORS ===
+  app.get(api.vendors.list.path, async (req, res) => {
+    const vendorsList = await storage.getVendors();
+    res.json(vendorsList);
+  });
+
+  app.post(api.vendors.create.path, async (req, res) => {
+    try {
+      const input = api.vendors.create.input.parse(req.body);
+      const vendor = await storage.createVendor(input);
+      res.status(201).json(vendor);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ message: err.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    }
+  });
+
+  app.post(api.vendors.recordPayment.path, async (req, res) => {
+    try {
+      const input = api.vendors.recordPayment.input.parse(req.body);
+      const payment = await storage.recordVendorPayment(input);
+      res.status(201).json(payment);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        res.status(400).json({ message: err.errors[0].message });
+      } else {
+        res.status(500).json({ message: "Internal Server Error" });
+      }
+    }
+  });
+
   // === GLOBAL SEARCH ===
   app.get(api.globalSearch.search.path, async (req, res) => {
     const q = req.query.q as string;
@@ -208,7 +276,8 @@ async function seedDatabase() {
       travelDate: '2025-03-15',
       airline: 'Indigo',
       platform: 'MakeMyTrip',
-      totalAmount: "5400"
+      totalAmount: "5400",
+      paymentMode: "Cash"
     });
     
     const v = (await storage.getVehicles())[0];
@@ -220,7 +289,8 @@ async function seedDatabase() {
       dropLocation: 'Banjara Hills',
       vehicleId: v.id,
       totalAmount: "1500",
-      advanceAmount: "500"
+      advanceAmount: "500",
+      paymentMode: "Cash"
     });
   }
 }
