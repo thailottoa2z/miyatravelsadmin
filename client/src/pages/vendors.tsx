@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Plus, HandCoins } from "lucide-react";
+import { Plus, HandCoins, Users } from "lucide-react";
 import type { Vendor } from "@shared/schema";
 
 function formatINR(n: number) {
@@ -61,7 +61,12 @@ export default function Vendors() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Vendors</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-rose-500/10 dark:bg-rose-400/10">
+            <Users className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+          </div>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Vendors</h1>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button data-testid="button-add-vendor"><Plus className="w-4 h-4 mr-1" /> Add Vendor</Button></DialogTrigger>
           <DialogContent>

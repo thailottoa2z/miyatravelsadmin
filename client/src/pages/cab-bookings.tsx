@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import { Plus, Pencil, Bell, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Bell, AlertTriangle, Car } from "lucide-react";
 import type { Vehicle, Vendor, CabBookingWithVehicle } from "@shared/schema";
 
 function formatINR(n: number) {
@@ -29,6 +29,7 @@ export default function CabBookings() {
   const [addPlateOpen, setAddPlateOpen] = useState(false);
   const [newPlate, setNewPlate] = useState("");
   const [form, setForm] = useState({ ...emptyForm });
+  const [detailBooking, setDetailBooking] = useState<CabBookingWithVehicle | null>(null);
 
   const query = useQuery<CabBookingWithVehicle[]>({ queryKey: ["/api/cab-bookings"] });
   const vehiclesQuery = useQuery<Vehicle[]>({ queryKey: ["/api/vehicles"] });
@@ -216,7 +217,12 @@ export default function CabBookings() {
       )}
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Cab Bookings</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-amber-500/10 dark:bg-amber-400/10">
+            <Car className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Cab Bookings</h1>
+        </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm({ ...emptyForm }); }}>
           <DialogTrigger asChild><Button data-testid="button-add-cab"><Plus className="w-4 h-4 mr-1" /> New Booking</Button></DialogTrigger>
           <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
@@ -243,6 +249,82 @@ export default function CabBookings() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={detailBooking !== null} onOpenChange={(v) => { if (!v) setDetailBooking(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold" data-testid="text-detail-client-name">{detailBooking?.clientName}</DialogTitle>
+          </DialogHeader>
+          {detailBooking && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-muted-foreground">Phone</div>
+                  <div className="font-medium" data-testid="text-detail-phone">{detailBooking.clientPhone}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Reference</div>
+                  <div className="font-medium" data-testid="text-detail-reference">{detailBooking.referenceName && detailBooking.referencePhone ? `${detailBooking.referenceName} (${detailBooking.referencePhone})` : detailBooking.referenceName || detailBooking.referencePhone || "-"}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Travel Date</div>
+                  <div className="font-medium" data-testid="text-detail-date">{detailBooking.travelDate}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Pickup Location</div>
+                  <div className="font-medium" data-testid="text-detail-pickup">{detailBooking.pickupLocation}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Drop Location</div>
+                  <div className="font-medium" data-testid="text-detail-drop">{detailBooking.dropLocation}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Vehicle (Car Number)</div>
+                  <div className="font-medium" data-testid="text-detail-vehicle">{detailBooking.vehicle?.carNumber || "-"}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Total Amount</div>
+                  <div className="font-medium" data-testid="text-detail-total">{formatINR(Number(detailBooking.totalAmount))}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Advance Amount</div>
+                  <div className="font-medium" data-testid="text-detail-advance">{formatINR(Number(detailBooking.advanceAmount))}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Pending Amount</div>
+                  <div className={`font-medium ${Number(detailBooking.totalAmount) - Number(detailBooking.advanceAmount) > 0 ? "text-orange-600 dark:text-orange-400" : ""}`} data-testid="text-detail-pending">{formatINR(Math.max(0, Number(detailBooking.totalAmount) - Number(detailBooking.advanceAmount)))}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Payment Mode</div>
+                  <div className="font-medium" data-testid="text-detail-payment">{detailBooking.paymentMode || "-"}</div>
+                </div>
+                {detailBooking.vendor && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Vendor</div>
+                    <div className="font-medium" data-testid="text-detail-vendor">{detailBooking.vendor.name}</div>
+                  </div>
+                )}
+                {detailBooking.reminderDate && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Reminder Date</div>
+                    <div className="font-medium" data-testid="text-detail-reminder-date">{detailBooking.reminderDate}</div>
+                  </div>
+                )}
+                {detailBooking.reminderNote && (
+                  <div>
+                    <div className="text-sm text-muted-foreground">Reminder Note</div>
+                    <div className="font-medium" data-testid="text-detail-reminder-note">{detailBooking.reminderNote}</div>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 justify-end pt-4">
+                <Button variant="outline" onClick={() => setDetailBooking(null)} data-testid="button-detail-cancel">Cancel</Button>
+                <Button onClick={() => { openEdit(detailBooking); setDetailBooking(null); }} data-testid="button-detail-edit">Edit</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {query.isLoading ? <Skeleton className="h-64" /> : (
         <Card>
           <CardContent className="p-0 overflow-auto">
@@ -259,12 +341,11 @@ export default function CabBookings() {
                   <TableHead>Total</TableHead>
                   <TableHead>Advance</TableHead>
                   <TableHead>Pending</TableHead>
-                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(query.data || []).map((b) => (
-                  <TableRow key={b.id} data-testid={`row-cab-${b.id}`}>
+                  <TableRow key={b.id} data-testid={`row-cab-${b.id}`} className="cursor-pointer hover-elevate" onClick={() => setDetailBooking(b)}>
                     <TableCell className="font-medium">{b.clientName}</TableCell>
                     <TableCell data-testid={`text-cab-phone-${b.id}`}>{b.clientPhone}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{b.referenceName || "-"}</TableCell>
@@ -275,14 +356,9 @@ export default function CabBookings() {
                     <TableCell>{formatINR(Number(b.totalAmount))}</TableCell>
                     <TableCell>{formatINR(Number(b.advanceAmount))}</TableCell>
                     <TableCell className="font-medium">{formatINR(Number(b.totalAmount) - Number(b.advanceAmount))}</TableCell>
-                    <TableCell>
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(b)} data-testid={`button-edit-cab-${b.id}`}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 ))}
-                {(query.data || []).length === 0 && <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No cab bookings yet</TableCell></TableRow>}
+                {(query.data || []).length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No cab bookings yet</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>

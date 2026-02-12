@@ -55,7 +55,12 @@ export default function CreditCards() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Credit Cards</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-violet-500/10 dark:bg-violet-400/10">
+            <CreditCardIcon className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+          </div>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Credit Cards</h1>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button data-testid="button-add-card"><Plus className="w-4 h-4 mr-1" /> Add Card</Button></DialogTrigger>
           <DialogContent>

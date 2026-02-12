@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { IndianRupee, TrendingUp, TrendingDown, Plus, Plane, Car, FileCheck, CreditCard } from "lucide-react";
+import { IndianRupee, TrendingUp, TrendingDown, Plus, Plane, Car, FileCheck, CreditCard, LayoutDashboard } from "lucide-react";
 import type { CashTransaction } from "@shared/schema";
 
 function formatINR(val: number) {
@@ -59,7 +59,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold" data-testid="text-page-title">Dashboard</h1>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center justify-center w-9 h-9 rounded-md bg-primary/10">
+          <LayoutDashboard className="w-5 h-5 text-primary" />
+        </div>
+        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Dashboard</h1>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Dialog open={ledgerOpen} onOpenChange={setLedgerOpen}>
@@ -68,16 +73,18 @@ export default function Dashboard() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="text-sm text-muted-foreground">Agency Cash</div>
-                  <IndianRupee className="w-4 h-4 text-muted-foreground" />
+                  <div className="flex items-center justify-center w-8 h-8 rounded-md bg-green-500/10 dark:bg-green-400/10">
+                    <IndianRupee className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
                 </div>
                 <div className="text-2xl font-bold mt-1" data-testid="text-cash-balance">
                   {stats ? formatINR(stats.totalBalance) : <Skeleton className="h-8 w-32" />}
                 </div>
                 <div className="flex gap-3 mt-2 flex-wrap">
-                  <span className="text-xs text-green-600 flex items-center gap-1">
+                  <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                     <TrendingUp className="w-3 h-3" /> {stats ? formatINR(stats.totalIn) : "..."}
                   </span>
-                  <span className="text-xs text-red-500 flex items-center gap-1">
+                  <span className="text-xs text-red-500 dark:text-red-400 flex items-center gap-1">
                     <TrendingDown className="w-3 h-3" /> {stats ? formatINR(stats.totalOut) : "..."}
                   </span>
                 </div>
@@ -152,31 +159,37 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
-        <Card data-testid="card-flights-count">
+        <Card className="cursor-pointer hover-elevate" data-testid="card-flights-count" onClick={() => window.location.href = '/flights'}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-muted-foreground">Flight Bookings</div>
-              <Plane className="w-4 h-4 text-muted-foreground" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-md bg-blue-500/10 dark:bg-blue-400/10">
+                <Plane className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              </div>
             </div>
             <div className="text-2xl font-bold mt-1">{Array.isArray(flightsQuery.data) ? flightsQuery.data.length : "..."}</div>
           </CardContent>
         </Card>
 
-        <Card data-testid="card-cabs-count">
+        <Card className="cursor-pointer hover-elevate" data-testid="card-cabs-count" onClick={() => window.location.href = '/cabs'}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-muted-foreground">Cab Bookings</div>
-              <Car className="w-4 h-4 text-muted-foreground" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-md bg-amber-500/10 dark:bg-amber-400/10">
+                <Car className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
             </div>
             <div className="text-2xl font-bold mt-1">{Array.isArray(cabsQuery.data) ? cabsQuery.data.length : "..."}</div>
           </CardContent>
         </Card>
 
-        <Card data-testid="card-visa-count">
+        <Card className="cursor-pointer hover-elevate" data-testid="card-visa-count" onClick={() => window.location.href = '/visa'}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="text-sm text-muted-foreground">Visa Applications</div>
-              <FileCheck className="w-4 h-4 text-muted-foreground" />
+              <div className="flex items-center justify-center w-8 h-8 rounded-md bg-emerald-500/10 dark:bg-emerald-400/10">
+                <FileCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              </div>
             </div>
             <div className="text-2xl font-bold mt-1">{Array.isArray(visaQuery.data) ? visaQuery.data.length : "..."}</div>
           </CardContent>

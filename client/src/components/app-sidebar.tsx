@@ -14,14 +14,14 @@ import { LayoutDashboard, Plane, Car, Route, CreditCard, Users, FileCheck, Stamp
 import { Link, useLocation } from "wouter";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Flight Bookings", url: "/flights", icon: Plane },
-  { title: "Cab Bookings", url: "/cabs", icon: Car },
-  { title: "Cab Runs", url: "/cab-runs", icon: Route },
-  { title: "Attestation", url: "/attestation", icon: Stamp },
-  { title: "Credit Cards", url: "/credit-cards", icon: CreditCard },
-  { title: "Vendors", url: "/vendors", icon: Users },
-  { title: "Work Visa", url: "/visa", icon: FileCheck },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, color: "text-sidebar-primary" },
+  { title: "Flight Bookings", url: "/flights", icon: Plane, color: "text-blue-500 dark:text-blue-400" },
+  { title: "Cab Bookings", url: "/cabs", icon: Car, color: "text-amber-500 dark:text-amber-400" },
+  { title: "Cab Runs", url: "/cab-runs", icon: Route, color: "text-orange-500 dark:text-orange-400" },
+  { title: "Attestation", url: "/attestation", icon: Stamp, color: "text-teal-500 dark:text-teal-400" },
+  { title: "Credit Cards", url: "/credit-cards", icon: CreditCard, color: "text-violet-500 dark:text-violet-400" },
+  { title: "Vendors", url: "/vendors", icon: Users, color: "text-rose-500 dark:text-rose-400" },
+  { title: "Work Visa", url: "/visa", icon: FileCheck, color: "text-emerald-500 dark:text-emerald-400" },
 ];
 
 export function AppSidebar() {
@@ -49,7 +49,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={location === item.url} data-testid={`nav-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
                     <Link href={item.url}>
-                      <item.icon />
+                      <item.icon className={item.color} />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Stamp } from "lucide-react";
 import type { AttestationService, Vendor } from "@shared/schema";
 
 const DOCUMENT_TYPES = [
@@ -96,7 +96,12 @@ export default function AttestationServices() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Attestation Services</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-teal-500/10 dark:bg-teal-400/10">
+            <Stamp className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+          </div>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Attestation Services</h1>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-attestation"><Plus className="w-4 h-4 mr-1" /> New Attestation</Button>

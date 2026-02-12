@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Plus, Lock, RefreshCw, Check, Clock } from "lucide-react";
+import { Plus, Lock, RefreshCw, Check, Clock, FileCheck } from "lucide-react";
 import type { VisaApplication } from "@shared/schema";
 
 function StatusBadge({ status, locked }: { status: string; locked?: boolean }) {
@@ -26,6 +26,7 @@ function StatusBadge({ status, locked }: { status: string; locked?: boolean }) {
 export default function VisaApplications() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [detailVisa, setDetailVisa] = useState<VisaApplication | null>(null);
   const [form, setForm] = useState({ clientName: "", passportNumber: "", phone: "", visaType: "" });
 
   const query = useQuery<VisaApplication[]>({ queryKey: ["/api/visa-applications"] });
@@ -48,6 +49,11 @@ export default function VisaApplications() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visa-applications"] });
       toast({ title: "Status updated" });
+      // Update detail visa from refreshed query data if it's open
+      if (detailVisa && query.data) {
+        const updated = query.data.find(v => v.id === detailVisa.id);
+        if (updated) setDetailVisa(updated);
+      }
     },
     onError: () => toast({ title: "Error", variant: "destructive" }),
   });
@@ -75,7 +81,12 @@ export default function VisaApplications() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Work Visa</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-emerald-500/10 dark:bg-emerald-400/10">
+            <FileCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Work Visa</h1>
+        </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button data-testid="button-add-visa"><Plus className="w-4 h-4 mr-1" /> New Application</Button></DialogTrigger>
           <DialogContent>
@@ -105,49 +116,26 @@ export default function VisaApplications() {
       {query.isLoading ? <Skeleton className="h-64" /> : (
         <div className="space-y-3">
           {(query.data || []).map((v) => (
-            <Card key={v.id} data-testid={`card-visa-${v.id}`}>
+            <Card key={v.id} data-testid={`card-visa-${v.id}`} className="cursor-pointer hover-elevate" onClick={() => setDetailVisa(v)}>
               <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4 flex-wrap mb-3">
-                  <div>
-                    <div className="font-semibold">{v.clientName}</div>
-                    <div className="text-sm text-muted-foreground">Passport: {v.passportNumber} | Phone: {v.phone}</div>
-                    <div className="text-sm text-muted-foreground">Type: {v.visaType}</div>
-                  </div>
+                <div className="mb-3">
+                  <div className="font-semibold">{v.clientName}</div>
+                  <div className="text-sm text-muted-foreground">Passport: {v.passportNumber}</div>
+                  <div className="text-sm text-muted-foreground">Type: {v.visaType}</div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">Medical</div>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Medical:</span>
                     <StatusBadge status={v.medicalStatus} />
-                    <div className="flex gap-1 flex-wrap">
-                      {v.medicalStatus === "pending" && (
-                        <>
-                          <Button size="sm" variant="outline" onClick={() => handleMedical(v.id, "fit")} data-testid={`button-medical-fit-${v.id}`}>Mark Fit</Button>
-                          <Button size="sm" variant="outline" onClick={() => handleMedical(v.id, "unfit")} data-testid={`button-medical-unfit-${v.id}`}>Mark Unfit</Button>
-                        </>
-                      )}
-                      {v.medicalStatus === "unfit" && (
-                        <Button size="sm" variant="outline" onClick={() => handleMedical(v.id, "pending")} data-testid={`button-medical-repeat-${v.id}`}>
-                          <RefreshCw className="w-3 h-3 mr-1" /> Repeat Medical
-                        </Button>
-                      )}
-                    </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">PCC</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">PCC:</span>
                     <StatusBadge status={v.pccStatus} locked={v.medicalStatus !== "fit"} />
-                    {v.medicalStatus === "fit" && v.pccStatus === "pending" && (
-                      <Button size="sm" variant="outline" onClick={() => handlePcc(v.id, "completed")} data-testid={`button-pcc-complete-${v.id}`}>Mark Completed</Button>
-                    )}
                   </div>
-
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">Stamping</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Stamping:</span>
                     <StatusBadge status={v.stampingStatus} locked={v.pccStatus !== "completed"} />
-                    {v.pccStatus === "completed" && v.stampingStatus === "pending" && (
-                      <Button size="sm" variant="outline" onClick={() => handleStamping(v.id, "completed")} data-testid={`button-stamping-complete-${v.id}`}>Mark Completed</Button>
-                    )}
                   </div>
                 </div>
               </CardContent>
@@ -157,6 +145,75 @@ export default function VisaApplications() {
             <div className="text-center text-muted-foreground py-12">No visa applications yet</div>
           )}
         </div>
+      )}
+
+      {detailVisa && (
+        <Dialog open={!!detailVisa} onOpenChange={(isOpen) => !isOpen && setDetailVisa(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle data-testid={`text-detail-title-${detailVisa.id}`}>{detailVisa.clientName}</DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Info Fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-muted-foreground font-medium">Phone</div>
+                  <div className="font-medium">{detailVisa.phone}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground font-medium">Passport Number</div>
+                  <div className="font-medium">{detailVisa.passportNumber}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground font-medium">Visa Type</div>
+                  <div className="font-medium">{detailVisa.visaType}</div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-4">Status Workflow</h3>
+
+                {/* Medical */}
+                <div className="space-y-2 mb-4">
+                  <div className="text-sm font-medium">Medical</div>
+                  <StatusBadge status={detailVisa.medicalStatus} />
+                  <div className="flex gap-1 flex-wrap">
+                    {detailVisa.medicalStatus === "pending" && (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => handleMedical(detailVisa.id, "fit")} data-testid={`button-medical-fit-${detailVisa.id}`}>Mark Fit</Button>
+                        <Button size="sm" variant="outline" onClick={() => handleMedical(detailVisa.id, "unfit")} data-testid={`button-medical-unfit-${detailVisa.id}`}>Mark Unfit</Button>
+                      </>
+                    )}
+                    {detailVisa.medicalStatus === "unfit" && (
+                      <Button size="sm" variant="outline" onClick={() => handleMedical(detailVisa.id, "pending")} data-testid={`button-medical-repeat-${detailVisa.id}`}>
+                        <RefreshCw className="w-3 h-3 mr-1" /> Repeat Medical
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* PCC */}
+                <div className="space-y-2 mb-4">
+                  <div className="text-sm font-medium">PCC</div>
+                  <StatusBadge status={detailVisa.pccStatus} locked={detailVisa.medicalStatus !== "fit"} />
+                  {detailVisa.medicalStatus === "fit" && detailVisa.pccStatus === "pending" && (
+                    <Button size="sm" variant="outline" onClick={() => handlePcc(detailVisa.id, "completed")} data-testid={`button-pcc-complete-${detailVisa.id}`}>Mark Completed</Button>
+                  )}
+                </div>
+
+                {/* Stamping */}
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Stamping</div>
+                  <StatusBadge status={detailVisa.stampingStatus} locked={detailVisa.pccStatus !== "completed"} />
+                  {detailVisa.pccStatus === "completed" && detailVisa.stampingStatus === "pending" && (
+                    <Button size="sm" variant="outline" onClick={() => handleStamping(detailVisa.id, "completed")} data-testid={`button-stamping-complete-${detailVisa.id}`}>Mark Completed</Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

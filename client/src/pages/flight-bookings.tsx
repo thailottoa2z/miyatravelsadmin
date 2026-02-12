@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import { Plus, Trash2, Pencil, Bell, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Pencil, Bell, AlertTriangle, Plane } from "lucide-react";
 import type { FlightBooking, Vendor } from "@shared/schema";
 
 const PLATFORMS = ["MakeMyTrip", "Goibibo", "Cleartrip", "Via.com", "Akbar Travels", "Others"];
@@ -29,6 +29,7 @@ export default function FlightBookings() {
   const [editOpen, setEditOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
+  const [detailBooking, setDetailBooking] = useState<FlightBooking | null>(null);
 
   const query = useQuery<FlightBooking[]>({ queryKey: ["/api/flight-bookings"] });
   const vendorsQuery = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
@@ -216,7 +217,12 @@ export default function FlightBookings() {
       )}
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Flight Bookings</h1>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-9 h-9 rounded-md bg-blue-500/10 dark:bg-blue-400/10">
+            <Plane className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Flight Bookings</h1>
+        </div>
         <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setForm({ ...emptyForm }); }}>
           <DialogTrigger asChild><Button data-testid="button-add-flight"><Plus className="w-4 h-4 mr-1" /> New Booking</Button></DialogTrigger>
           <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
@@ -230,6 +236,79 @@ export default function FlightBookings() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
           <DialogHeader><DialogTitle>Edit Flight Booking</DialogTitle></DialogHeader>
           {formFields(true)}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={detailBooking !== null} onOpenChange={(v) => { if (!v) setDetailBooking(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-auto" data-testid="dialog-flight-detail">
+          <DialogHeader><DialogTitle className="text-2xl font-semibold" data-testid="text-detail-client-name">{detailBooking?.clientName}</DialogTitle></DialogHeader>
+          {detailBooking && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Phone</p>
+                  <p className="font-medium" data-testid="text-detail-phone">{detailBooking.clientPhone}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Reference</p>
+                  <p className="font-medium" data-testid="text-detail-reference">{detailBooking.referenceName && detailBooking.referencePhone ? `${detailBooking.referenceName} (${detailBooking.referencePhone})` : detailBooking.referenceName || detailBooking.referencePhone || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Sector</p>
+                  <p className="font-medium" data-testid="text-detail-sector">{detailBooking.sector}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Travel Date</p>
+                  <p className="font-medium" data-testid="text-detail-date">{detailBooking.travelDate}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Airline</p>
+                  <p className="font-medium" data-testid="text-detail-airline">{detailBooking.airline}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Platform</p>
+                  <p className="font-medium" data-testid="text-detail-platform">{detailBooking.platform === "Others" ? detailBooking.platformNotes || "Others" : detailBooking.platform}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                  <p className="font-medium" data-testid="text-detail-total">{formatINR(Number(detailBooking.totalAmount))}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Advance Paid</p>
+                  <p className="font-medium" data-testid="text-detail-advance">{formatINR(Number(detailBooking.advancePaid || 0))}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Pending Amount</p>
+                  <p className={`font-medium ${Number(detailBooking.totalAmount) - Number(detailBooking.advancePaid || 0) > 0 ? "text-orange-600 dark:text-orange-400" : ""}`} data-testid="text-detail-pending">{formatINR(Number(detailBooking.totalAmount) - Number(detailBooking.advancePaid || 0))}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Payment Mode</p>
+                  <p className="font-medium" data-testid="text-detail-payment">{detailBooking.paymentMode || "Cash"}</p>
+                </div>
+                {detailBooking.vendorId && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Vendor</p>
+                    <p className="font-medium" data-testid="text-detail-vendor">{vendorsQuery.data?.find(v => v.id === detailBooking.vendorId)?.name || "-"}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Reminder Date</p>
+                  <p className="font-medium" data-testid="text-detail-reminder-date">{detailBooking.reminderDate || "-"}</p>
+                </div>
+                {detailBooking.reminderNote && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Reminder Note</p>
+                    <p className="font-medium" data-testid="text-detail-reminder-note">{detailBooking.reminderNote}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 justify-end pt-4 border-t">
+                <Button variant="outline" onClick={() => setDetailBooking(null)} data-testid="button-close-detail">Cancel</Button>
+                <Button onClick={() => { openEdit(detailBooking); setDetailBooking(null); }} data-testid="button-detail-edit"><Pencil className="w-4 h-4 mr-1" /> Edit</Button>
+                <Button variant="destructive" onClick={() => { deleteMut.mutate(detailBooking.id); setDetailBooking(null); }} data-testid="button-detail-delete"><Trash2 className="w-4 h-4 mr-1" /> Delete</Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -249,14 +328,13 @@ export default function FlightBookings() {
                   <TableHead>Total</TableHead>
                   <TableHead>Advance</TableHead>
                   <TableHead>Pending</TableHead>
-                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(query.data || []).map((f) => {
                   const pending = Number(f.totalAmount) - Number(f.advancePaid || 0);
                   return (
-                    <TableRow key={f.id} data-testid={`row-flight-${f.id}`}>
+                    <TableRow key={f.id} data-testid={`row-flight-${f.id}`} className="cursor-pointer hover-elevate" onClick={() => setDetailBooking(f)}>
                       <TableCell className="font-medium">{f.clientName}</TableCell>
                       <TableCell data-testid={`text-flight-phone-${f.id}`}>{f.clientPhone}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{f.referenceName || "-"}</TableCell>
@@ -266,21 +344,11 @@ export default function FlightBookings() {
                       <TableCell>{f.platform === "Others" ? f.platformNotes || "Others" : f.platform}</TableCell>
                       <TableCell className="font-medium">{formatINR(Number(f.totalAmount))}</TableCell>
                       <TableCell>{formatINR(Number(f.advancePaid || 0))}</TableCell>
-                      <TableCell className={pending > 0 ? "font-medium text-orange-600" : ""}>{formatINR(pending)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button size="icon" variant="ghost" onClick={() => openEdit(f)} data-testid={`button-edit-flight-${f.id}`}>
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" onClick={() => deleteMut.mutate(f.id)} data-testid={`button-delete-flight-${f.id}`}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      <TableCell className={pending > 0 ? "font-medium text-orange-600 dark:text-orange-400" : ""}>{formatINR(pending)}</TableCell>
                     </TableRow>
                   );
                 })}
-                {(query.data || []).length === 0 && <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No flight bookings yet</TableCell></TableRow>}
+                {(query.data || []).length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No flight bookings yet</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>
