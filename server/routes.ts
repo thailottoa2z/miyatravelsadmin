@@ -23,10 +23,9 @@ export async function registerRoutes(
       res.status(201).json(transaction);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
@@ -48,13 +47,12 @@ export async function registerRoutes(
       res.status(201).json(flight);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
-  
+
   app.delete(api.flights.delete.path, async (req, res) => {
     await storage.deleteFlightBooking(Number(req.params.id));
     res.sendStatus(204);
@@ -62,8 +60,8 @@ export async function registerRoutes(
 
   // === VEHICLES ===
   app.get(api.vehicles.list.path, async (req, res) => {
-    const vehicles = await storage.getVehicles();
-    res.json(vehicles);
+    const v = await storage.getVehicles();
+    res.json(v);
   });
 
   app.post(api.vehicles.create.path, async (req, res) => {
@@ -72,11 +70,10 @@ export async function registerRoutes(
       const vehicle = await storage.createVehicle(input);
       res.status(201).json(vehicle);
     } catch (err) {
-       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error or Duplicate Car Number" });
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(400).json({ message: "Duplicate car number or invalid data" });
     }
   });
 
@@ -93,10 +90,9 @@ export async function registerRoutes(
       res.status(201).json(booking);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
@@ -108,10 +104,9 @@ export async function registerRoutes(
       res.json(booking);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
@@ -128,10 +123,9 @@ export async function registerRoutes(
       res.status(201).json(run);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
@@ -149,10 +143,9 @@ export async function registerRoutes(
       res.status(201).json(visa);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
@@ -163,11 +156,10 @@ export async function registerRoutes(
       if (!visa) return res.status(404).json({ message: "Visa application not found" });
       res.json(visa);
     } catch (err) {
-       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
@@ -184,10 +176,9 @@ export async function registerRoutes(
       res.status(201).json(card);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
@@ -195,21 +186,20 @@ export async function registerRoutes(
     try {
       const { amount } = api.creditCards.repay.input.parse(req.body);
       const card = await storage.repayCreditCard(Number(req.params.id), amount);
-      if (!card) return res.status(404).json({ message: "Card not found" });
+      if (!card) return res.status(404).json({ message: "Credit card not found" });
       res.json(card);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
   // === VENDORS ===
   app.get(api.vendors.list.path, async (req, res) => {
-    const vendorsList = await storage.getVendors();
-    res.json(vendorsList);
+    const v = await storage.getVendors();
+    res.json(v);
   });
 
   app.post(api.vendors.create.path, async (req, res) => {
@@ -219,24 +209,25 @@ export async function registerRoutes(
       res.status(201).json(vendor);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(400).json({ message: "Duplicate vendor name or invalid data" });
     }
   });
 
   app.post(api.vendors.recordPayment.path, async (req, res) => {
     try {
       const input = api.vendors.recordPayment.input.parse(req.body);
-      const payment = await storage.recordVendorPayment(input);
+      const payment = await storage.recordVendorPayment({
+        ...input,
+        vendorId: Number(req.params.id),
+      });
       res.status(201).json(payment);
     } catch (err) {
       if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(500).json({ message: "Internal Server Error" });
+        return res.status(400).json({ message: err.errors[0].message });
       }
+      res.status(500).json({ message: "Internal Server Error" });
     }
   });
 
@@ -247,8 +238,7 @@ export async function registerRoutes(
     const results = await storage.searchGlobal(q);
     res.json(results);
   });
-  
-  // Seed initial data
+
   await seedDatabase();
 
   return httpServer;
@@ -257,40 +247,13 @@ export async function registerRoutes(
 async function seedDatabase() {
   const transactions = await storage.getCashTransactions();
   if (transactions.length === 0) {
-    // Initial Seed: 4,50,000 as requested
-    await storage.createCashTransaction({
-      type: 'in',
-      personName: 'System',
-      amount: "450000",
-      reason: 'Opening Balance'
-    });
-    
-    // Some sample data
+    await storage.createCashTransaction({ type: 'in', personName: 'System', amount: "450000", reason: 'Opening Balance' });
     await storage.createVehicle({ carNumber: 'AP39WK6292' });
     await storage.createVehicle({ carNumber: 'TS08UB1234' });
-    
-    await storage.createFlightBooking({
-      clientName: 'Rahul Sharma',
-      clientPhone: '9876543210',
-      sector: 'HYD-DEL',
-      travelDate: '2025-03-15',
-      airline: 'Indigo',
-      platform: 'MakeMyTrip',
-      totalAmount: "5400",
-      paymentMode: "Cash"
-    });
-    
+    await storage.createFlightBooking({ clientName: 'Rahul Sharma', clientPhone: '9876543210', sector: 'HYD-DEL', travelDate: '2025-03-15', airline: 'Indigo', platform: 'MakeMyTrip', totalAmount: "5400" });
     const v = (await storage.getVehicles())[0];
-    await storage.createCabBooking({
-      clientName: 'Priya Verma',
-      clientPhone: '9988776655',
-      travelDate: '2025-02-20',
-      pickupLocation: 'Airport',
-      dropLocation: 'Banjara Hills',
-      vehicleId: v.id,
-      totalAmount: "1500",
-      advanceAmount: "500",
-      paymentMode: "Cash"
-    });
+    await storage.createCabBooking({ clientName: 'Priya Verma', clientPhone: '9988776655', travelDate: '2025-02-20', pickupLocation: 'Airport', dropLocation: 'Banjara Hills', vehicleId: v.id, totalAmount: "1500", advanceAmount: "500" });
+    await storage.createVendor({ name: 'RiyaB2B' });
+    await storage.createVendor({ name: 'TravelPort' });
   }
 }
