@@ -1,0 +1,71 @@
+"Build a high-performance Agency Management App for 'Miya Travels' with the following precise logic and interface adjustments:
+
+1. Clickable Agency Cash Ledger (The "In & Out" System)
+Tile Action: The 'Agency Cash' tile (Starting ₹4,50,000) must be a clickable button.
+
+Ledger View: Clicking it opens a screen showing a transaction list with an 'Add Entry' button.
+
+Entry Fields:
+
+Transaction Type: Toggle/Dropdown for 'In' (Cash Added) or 'Out' (Cash Removed/Deposited).
+
+Person Name: Who handled the cash.
+
+Amount: The sum of money.
+
+Reason/Purpose: (e.g., 'Depositing cash to Bank Account', 'Office Rent', 'Electricity').
+
+Logic: 'Out' entries subtract from the total; 'In' entries add to it.
+
+2. Flight Booking Cleanup
+Remove Fields: Delete 'Return Date' and 'PNR' fields.
+
+Platform Logic: In the 'Platform' dropdown, if 'Others' is selected, a text input field (Notes) must appear to manually type the platform name.
+
+History View: Ensure the Client’s Contact Number is visible in the list view.
+
+3. Cab Booking & Vehicle Management
+Fields: Remove 'Margin'. Add 'Pending Amount' (Total - Advance).
+
+Car Number Logic: * Provide a Dropdown for existing car numbers (e.g., AP39WK6292).
+
+Include an 'Add New Plate' option.
+
+Formatting: All letters in the Car Number field must automatically convert to UPPERCASE.
+
+History Order: Sort all bookings in Descending Order by Entry Date (Newest/13th at the top, Oldest/11th at the bottom).
+
+History View: Ensure the Client’s Phone Number is visible in the list.
+
+4. The 'Cab Run' Round-Trip Logic
+Sync Logic: When a Name is entered, auto-fetch the Travel Date and Advance Amount from the 'Cab Booking' table.
+
+Return Function: Add a 'Return Trip' button.
+
+Use this for different clients being picked up from the airport after dropping off the initial clients.
+
+Track Date, No. of Passengers, and Name for the return leg.
+
+Formulas:
+
+Total Collection = Onward Advances + Return Advances + Driver Collections.
+
+Total Expenses = Diesel + Toll + Parking + Others + Driver Salary.
+
+Total Profit = Total Collection - Total Expenses.
+
+Margin (Driver Handover) = Total Collection - Total Advances - Total Expenses.
+
+5. Work Visa & Unlimited Assets
+Visa Process: Locked workflow (Medical -> PCC -> Stamping). Lock steps until Medical is 'Fit'. Enable 'Repeat Medical' button if 'Unfit'.
+
+Unlimited: Allow adding unlimited Credit Cards and Vendors with 70%/90% usage alerts.
+
+Universal: Every booking must have a Reference Name and Phone.
+
+6. General UI
+Default Currency: INR (₹).
+
+Theme: Light/Dark mode toggle.
+
+Global Search: Search by Name, Passport, Phone, or Driver."
