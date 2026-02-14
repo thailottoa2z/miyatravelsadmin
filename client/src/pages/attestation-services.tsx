@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Plus, Trash2, Stamp } from "lucide-react";
+import { Plus, Trash2, Stamp, Pencil } from "lucide-react";
 import type { AttestationService, Vendor } from "@shared/schema";
 
 const DOCUMENT_TYPES = [
@@ -34,6 +34,21 @@ function formatINR(n: number) {
 export default function AttestationServices() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    clientName: "",
+    phone: "",
+    referenceName: "",
+    referencePhone: "",
+    documentType: "",
+    targetCountry: "",
+    serviceCharge: "",
+    ourCost: "0",
+    advanceReceived: "0",
+    paymentMode: "Cash",
+    vendorId: "",
+  });
   const [form, setForm] = useState({
     clientName: "",
     phone: "",
@@ -80,18 +95,72 @@ export default function AttestationServices() {
     onError: () => toast({ title: "Error creating attestation", variant: "destructive" }),
   });
 
+  const editMut = useMutation({
+    mutationFn: async () => {
+      const body: any = {
+        ...editForm,
+        referenceName: editForm.referenceName || null,
+        referencePhone: editForm.referencePhone || null,
+        serviceCharge: editForm.serviceCharge,
+        ourCost: editForm.ourCost || "0",
+        advanceReceived: editForm.advanceReceived || "0",
+      };
+      if (editForm.paymentMode !== "Credit/Pay Later") {
+        body.vendorId = null;
+      } else {
+        body.vendorId = Number(editForm.vendorId) || null;
+      }
+      await apiRequest("PUT", `/api/attestation-services/${editId}`, body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/attestation-services"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cash-transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/cash-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      setEditOpen(false);
+      setEditId(null);
+      toast({ title: "Attestation service updated" });
+    },
+    onError: () => toast({ title: "Error updating attestation", variant: "destructive" }),
+  });
+
   const deleteMut = useMutation({
     mutationFn: async (id: number) => { await apiRequest("DELETE", `/api/attestation-services/${id}`); },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/attestation-services"] }); },
   });
 
   const setField = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
+  const setEditField = (key: string, val: string) => setEditForm((f) => ({ ...f, [key]: val }));
+
+  const openEditDialog = (s: AttestationService) => {
+    setEditId(s.id);
+    setEditForm({
+      clientName: s.clientName,
+      phone: s.phone,
+      referenceName: s.referenceName || "",
+      referencePhone: s.referencePhone || "",
+      documentType: s.documentType,
+      targetCountry: s.targetCountry,
+      serviceCharge: String(s.serviceCharge),
+      ourCost: String(s.ourCost),
+      advanceReceived: String(s.advanceReceived),
+      paymentMode: s.paymentMode || "Cash",
+      vendorId: s.vendorId ? String(s.vendorId) : "",
+    });
+    setEditOpen(true);
+  };
 
   const serviceCharge = Number(form.serviceCharge || 0);
   const ourCost = Number(form.ourCost || 0);
   const advanceReceived = Number(form.advanceReceived || 0);
   const pendingAmount = serviceCharge - advanceReceived;
   const margin = serviceCharge - ourCost;
+
+  const editServiceCharge = Number(editForm.serviceCharge || 0);
+  const editOurCost = Number(editForm.ourCost || 0);
+  const editAdvanceReceived = Number(editForm.advanceReceived || 0);
+  const editPendingAmount = editServiceCharge - editAdvanceReceived;
+  const editMargin = editServiceCharge - editOurCost;
 
   return (
     <div className="space-y-4">
@@ -170,6 +239,70 @@ export default function AttestationServices() {
         </Dialog>
       </div>
 
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-auto">
+          <DialogHeader><DialogTitle>Edit Attestation Service</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); editMut.mutate(); }} className="space-y-3">
+            <div><Label>Client Name</Label><Input value={editForm.clientName} onChange={(e) => setEditField("clientName", e.target.value)} required data-testid="input-edit-attest-client" /></div>
+            <div><Label>Phone Number</Label><Input value={editForm.phone} onChange={(e) => setEditField("phone", e.target.value)} required data-testid="input-edit-attest-phone" /></div>
+            <div><Label>Reference Name</Label><Input value={editForm.referenceName} onChange={(e) => setEditField("referenceName", e.target.value)} data-testid="input-edit-attest-ref-name" /></div>
+            <div><Label>Reference Phone</Label><Input value={editForm.referencePhone} onChange={(e) => setEditField("referencePhone", e.target.value)} data-testid="input-edit-attest-ref-phone" /></div>
+            <div>
+              <Label>Document Type</Label>
+              <Select value={editForm.documentType} onValueChange={(v) => setEditField("documentType", v)}>
+                <SelectTrigger data-testid="select-edit-attest-doc-type"><SelectValue placeholder="Select document type" /></SelectTrigger>
+                <SelectContent>
+                  {DOCUMENT_TYPES.map((dt) => <SelectItem key={dt} value={dt}>{dt}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label>Target Country</Label><Input value={editForm.targetCountry} onChange={(e) => setEditField("targetCountry", e.target.value)} placeholder="e.g. UAE, Saudi Arabia" required data-testid="input-edit-attest-country" /></div>
+
+            <Card>
+              <CardContent className="p-3 space-y-3">
+                <div className="font-medium text-sm">Financials</div>
+                <div><Label>Service Charge to Client (INR)</Label><Input type="number" value={editForm.serviceCharge} onChange={(e) => setEditField("serviceCharge", e.target.value)} required data-testid="input-edit-attest-charge" /></div>
+                <div><Label>Our Cost / Third Party (INR)</Label><Input type="number" value={editForm.ourCost} onChange={(e) => setEditField("ourCost", e.target.value)} data-testid="input-edit-attest-cost" /></div>
+                <div><Label>Advance Received (INR)</Label><Input type="number" value={editForm.advanceReceived} onChange={(e) => setEditField("advanceReceived", e.target.value)} data-testid="input-edit-attest-advance" /></div>
+                <div className="space-y-1 pt-2 border-t text-sm">
+                  <div className="flex justify-between"><span>Pending Amount</span><span className="font-medium" data-testid="text-edit-attest-pending">{formatINR(Math.max(0, editPendingAmount))}</span></div>
+                  <div className="flex justify-between"><span>Margin (Profit)</span><span className="font-medium" data-testid="text-edit-attest-margin">{formatINR(editMargin)}</span></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div>
+              <Label>Payment Mode</Label>
+              <Select value={editForm.paymentMode} onValueChange={(v) => setEditField("paymentMode", v)}>
+                <SelectTrigger data-testid="select-edit-attest-payment"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Credit/Pay Later">Credit/Pay Later</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editForm.paymentMode === "Cash" && Number(editForm.advanceReceived) > 0 && (
+              <div className="text-xs text-muted-foreground">Advance of {formatINR(Number(editForm.advanceReceived))} will be added to Agency Cash</div>
+            )}
+            {editForm.paymentMode === "Credit/Pay Later" && (
+              <div>
+                <Label>Select Vendor</Label>
+                <Select value={editForm.vendorId} onValueChange={(v) => setEditField("vendorId", v)}>
+                  <SelectTrigger data-testid="select-edit-attest-vendor"><SelectValue placeholder="Select vendor" /></SelectTrigger>
+                  <SelectContent>
+                    {(vendorsQuery.data || []).map((v) => <SelectItem key={v.id} value={String(v.id)}>{v.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button type="submit" disabled={editMut.isPending} data-testid="button-submit-edit-attestation">
+              {editMut.isPending ? "Saving..." : "Update Attestation"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {query.isLoading ? <Skeleton className="h-64" /> : (
         <Card>
           <CardContent className="p-0 overflow-auto">
@@ -215,9 +348,14 @@ export default function AttestationServices() {
                       <TableCell className="font-medium">{formatINR(mrg)}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{s.createdAt ? new Date(s.createdAt).toLocaleDateString("en-IN") : ""}</TableCell>
                       <TableCell>
-                        <Button size="icon" variant="ghost" onClick={() => deleteMut.mutate(s.id)} data-testid={`button-delete-attest-${s.id}`}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="icon" variant="ghost" onClick={() => openEditDialog(s)} data-testid={`button-edit-attest-${s.id}`}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button size="icon" variant="ghost" onClick={() => deleteMut.mutate(s.id)} data-testid={`button-delete-attest-${s.id}`}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

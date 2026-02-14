@@ -12,14 +12,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import { Plus, Pencil, Bell, AlertTriangle, Car } from "lucide-react";
+import { Plus, Pencil, AlertTriangle, Car } from "lucide-react";
 import type { Vehicle, Vendor, CabBookingWithVehicle } from "@shared/schema";
 
 function formatINR(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 }
 
-const emptyForm = { clientName: "", clientPhone: "", referenceName: "", referencePhone: "", travelDate: "", pickupLocation: "", dropLocation: "", vehicleId: "", totalAmount: "", advanceAmount: "0", paymentMode: "Cash", vendorId: "", reminderDate: "", reminderNote: "" };
+const emptyForm = { clientName: "", clientPhone: "", referenceName: "", referencePhone: "", travelDate: "", pickupLocation: "", dropLocation: "", vehicleId: "", totalAmount: "", advanceAmount: "0", paymentMode: "Cash", vendorId: "" };
 
 export default function CabBookings() {
   const { toast } = useToast();
@@ -34,18 +34,6 @@ export default function CabBookings() {
   const query = useQuery<CabBookingWithVehicle[]>({ queryKey: ["/api/cab-bookings"] });
   const vehiclesQuery = useQuery<Vehicle[]>({ queryKey: ["/api/vehicles"] });
   const vendorsQuery = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
-
-  const reminders = useMemo(() => {
-    if (!query.data) return [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return query.data.filter((b) => {
-      if (!b.reminderDate) return false;
-      const rd = new Date(b.reminderDate);
-      rd.setHours(0, 0, 0, 0);
-      return rd <= today;
-    });
-  }, [query.data]);
 
   const upcomingCabs = useMemo(() => {
     if (!query.data) return [];
@@ -66,8 +54,8 @@ export default function CabBookings() {
       if (form.paymentMode !== "Credit/Pay Later") { body.vendorId = null; } else { body.vendorId = Number(form.vendorId) || null; }
       if (!body.referenceName) body.referenceName = null;
       if (!body.referencePhone) body.referencePhone = null;
-      if (!body.reminderDate) body.reminderDate = null;
-      if (!body.reminderNote) body.reminderNote = null;
+      body.reminderDate = null;
+      body.reminderNote = null;
       await apiRequest("POST", "/api/cab-bookings", body);
     },
     onSuccess: () => {
@@ -86,8 +74,8 @@ export default function CabBookings() {
       if (form.paymentMode !== "Credit/Pay Later") { body.vendorId = null; } else { body.vendorId = Number(form.vendorId) || null; }
       if (!body.referenceName) body.referenceName = null;
       if (!body.referencePhone) body.referencePhone = null;
-      if (!body.reminderDate) body.reminderDate = null;
-      if (!body.reminderNote) body.reminderNote = null;
+      body.reminderDate = null;
+      body.reminderNote = null;
       await apiRequest("PUT", `/api/cab-bookings/${editId}`, body);
     },
     onSuccess: () => {
@@ -128,8 +116,6 @@ export default function CabBookings() {
       advanceAmount: String(b.advanceAmount),
       paymentMode: b.paymentMode || "Cash",
       vendorId: b.vendorId ? String(b.vendorId) : "",
-      reminderDate: b.reminderDate || "",
-      reminderNote: b.reminderNote || "",
     });
     setEditOpen(true);
   };
@@ -177,10 +163,6 @@ export default function CabBookings() {
           </Select>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-3">
-        <div><Label>Reminder Date</Label><Input type="date" value={form.reminderDate} onChange={(e) => setField("reminderDate", e.target.value)} data-testid="input-cab-reminder-date" /></div>
-        <div><Label>Reminder Note</Label><Input value={form.reminderNote} onChange={(e) => setField("reminderNote", e.target.value)} placeholder="Optional note" data-testid="input-cab-reminder-note" /></div>
-      </div>
       <Button type="submit" disabled={isEdit ? updateMut.isPending : createMut.isPending} data-testid="button-submit-cab">
         {(isEdit ? updateMut.isPending : createMut.isPending) ? "Saving..." : isEdit ? "Update Booking" : "Create Booking"}
       </Button>
@@ -189,19 +171,8 @@ export default function CabBookings() {
 
   return (
     <div className="space-y-4">
-      {(reminders.length > 0 || upcomingCabs.length > 0) && (
+      {upcomingCabs.length > 0 && (
         <div className="space-y-2">
-          {reminders.map((r) => (
-            <Card key={`rem-${r.id}`}>
-              <CardContent className="flex items-center gap-3 p-3">
-                <Bell className="w-4 h-4 text-orange-500 shrink-0" />
-                <div className="text-sm">
-                  <span className="font-medium">{r.clientName}</span> - {r.reminderNote || "Reminder due"} ({r.pickupLocation} to {r.dropLocation})
-                </div>
-                <Badge variant="outline" className="ml-auto shrink-0">Reminder</Badge>
-              </CardContent>
-            </Card>
-          ))}
           {upcomingCabs.map((b) => (
             <Card key={`alert-${b.id}`}>
               <CardContent className="flex items-center gap-3 p-3">
@@ -301,18 +272,6 @@ export default function CabBookings() {
                   <div>
                     <div className="text-sm text-muted-foreground">Vendor</div>
                     <div className="font-medium" data-testid="text-detail-vendor">{detailBooking.vendor.name}</div>
-                  </div>
-                )}
-                {detailBooking.reminderDate && (
-                  <div>
-                    <div className="text-sm text-muted-foreground">Reminder Date</div>
-                    <div className="font-medium" data-testid="text-detail-reminder-date">{detailBooking.reminderDate}</div>
-                  </div>
-                )}
-                {detailBooking.reminderNote && (
-                  <div>
-                    <div className="text-sm text-muted-foreground">Reminder Note</div>
-                    <div className="font-medium" data-testid="text-detail-reminder-note">{detailBooking.reminderNote}</div>
                   </div>
                 )}
               </div>

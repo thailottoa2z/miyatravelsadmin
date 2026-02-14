@@ -189,6 +189,15 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/visa-applications/:id' as const,
+      input: insertVisaApplicationSchema.partial(),
+      responses: {
+        200: z.custom<typeof visaApplications.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
     updateStatus: {
       method: 'PATCH' as const,
       path: '/api/visa-applications/:id/status' as const,
@@ -221,6 +230,15 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/credit-cards/:id' as const,
+      input: insertCreditCardSchema.partial(),
+      responses: {
+        200: z.custom<typeof creditCards.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
     repay: {
       method: 'POST' as const,
       path: '/api/credit-cards/:id/repay' as const,
@@ -248,6 +266,15 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/vendors/:id' as const,
+      input: insertVendorSchema.partial(),
+      responses: {
+        200: z.custom<typeof vendors.$inferSelect>(),
+        404: errorSchemas.notFound,
+      },
+    },
     recordPayment: {
       method: 'POST' as const,
       path: '/api/vendors/:id/payments' as const,
@@ -273,6 +300,15 @@ export const api = {
       responses: {
         201: z.custom<typeof attestationServices.$inferSelect>(),
         400: errorSchemas.validation,
+      },
+    },
+    update: {
+      method: 'PUT' as const,
+      path: '/api/attestation-services/:id' as const,
+      input: insertAttestationServiceSchema.partial(),
+      responses: {
+        200: z.custom<typeof attestationServices.$inferSelect>(),
+        404: errorSchemas.notFound,
       },
     },
     delete: {

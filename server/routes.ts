@@ -196,6 +196,20 @@ export async function registerRoutes(
     }
   });
 
+  app.put(api.visa.update.path, async (req, res) => {
+    try {
+      const input = api.visa.update.input.parse(req.body);
+      const visa = await storage.updateVisaApplication(Number(req.params.id), input);
+      if (!visa) return res.status(404).json({ message: "Visa application not found" });
+      res.json(visa);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
   app.patch(api.visa.updateStatus.path, async (req, res) => {
     try {
       const input = api.visa.updateStatus.input.parse(req.body);
@@ -221,6 +235,20 @@ export async function registerRoutes(
       const input = api.creditCards.create.input.parse(req.body);
       const card = await storage.createCreditCard(input);
       res.status(201).json(card);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  app.put(api.creditCards.update.path, async (req, res) => {
+    try {
+      const input = api.creditCards.update.input.parse(req.body);
+      const card = await storage.updateCreditCard(Number(req.params.id), input);
+      if (!card) return res.status(404).json({ message: "Credit card not found" });
+      res.json(card);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
@@ -262,6 +290,20 @@ export async function registerRoutes(
     }
   });
 
+  app.put(api.vendors.update.path, async (req, res) => {
+    try {
+      const input = api.vendors.update.input.parse(req.body);
+      const vendor = await storage.updateVendor(Number(req.params.id), input);
+      if (!vendor) return res.status(404).json({ message: "Vendor not found" });
+      res.json(vendor);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
   app.post(api.vendors.recordPayment.path, async (req, res) => {
     try {
       const input = api.vendors.recordPayment.input.parse(req.body);
@@ -297,6 +339,22 @@ export async function registerRoutes(
         });
       }
       res.status(201).json(service);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  });
+
+  app.put(api.attestation.update.path, async (req, res) => {
+    try {
+      if (req.body.referenceName === "") req.body.referenceName = null;
+      if (req.body.referencePhone === "") req.body.referencePhone = null;
+      const input = api.attestation.update.input.parse(req.body);
+      const service = await storage.updateAttestationService(Number(req.params.id), input);
+      if (!service) return res.status(404).json({ message: "Attestation service not found" });
+      res.json(service);
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });

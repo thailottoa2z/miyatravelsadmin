@@ -45,17 +45,20 @@ export interface IStorage {
   // Credit Cards
   getCreditCards(): Promise<CreditCard[]>;
   createCreditCard(data: InsertCreditCard): Promise<CreditCard>;
+  updateCreditCard(id: number, data: Partial<InsertCreditCard>): Promise<CreditCard | undefined>;
   repayCreditCard(id: number, amount: number): Promise<CreditCard | undefined>;
 
   // Vendors
   getVendors(): Promise<Vendor[]>;
   createVendor(data: InsertVendor): Promise<Vendor>;
+  updateVendor(id: number, data: Partial<InsertVendor>): Promise<Vendor | undefined>;
   recordVendorPayment(data: InsertVendorPayment): Promise<VendorPayment>;
   updateVendorBalance(id: number, amount: number): Promise<void>;
   
   // Attestation Services
   getAttestationServices(): Promise<AttestationService[]>;
   createAttestationService(data: InsertAttestationService): Promise<AttestationService>;
+  updateAttestationService(id: number, data: Partial<InsertAttestationService>): Promise<AttestationService | undefined>;
   deleteAttestationService(id: number): Promise<void>;
 
   // Global Search
@@ -188,6 +191,11 @@ export class DatabaseStorage implements IStorage {
     return card;
   }
 
+  async updateCreditCard(id: number, data: Partial<InsertCreditCard>): Promise<CreditCard | undefined> {
+    const [updated] = await db.update(creditCards).set(data).where(eq(creditCards.id, id)).returning();
+    return updated;
+  }
+
   async repayCreditCard(id: number, amount: number): Promise<CreditCard | undefined> {
     const [card] = await db.select().from(creditCards).where(eq(creditCards.id, id));
     if (!card) return undefined;
@@ -203,6 +211,11 @@ export class DatabaseStorage implements IStorage {
   async createVendor(data: InsertVendor): Promise<Vendor> {
     const [vendor] = await db.insert(vendors).values(data).returning();
     return vendor;
+  }
+
+  async updateVendor(id: number, data: Partial<InsertVendor>): Promise<Vendor | undefined> {
+    const [updated] = await db.update(vendors).set(data).where(eq(vendors.id, id)).returning();
+    return updated;
   }
 
   async recordVendorPayment(data: InsertVendorPayment): Promise<VendorPayment> {
@@ -229,6 +242,11 @@ export class DatabaseStorage implements IStorage {
       await this.updateVendorBalance(data.vendorId, Number(data.serviceCharge));
     }
     return service;
+  }
+
+  async updateAttestationService(id: number, data: Partial<InsertAttestationService>): Promise<AttestationService | undefined> {
+    const [updated] = await db.update(attestationServices).set(data).where(eq(attestationServices.id, id)).returning();
+    return updated;
   }
 
   async deleteAttestationService(id: number): Promise<void> {

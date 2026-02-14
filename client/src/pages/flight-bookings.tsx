@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import { Plus, Trash2, Pencil, Bell, AlertTriangle, Plane } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertTriangle, Plane } from "lucide-react";
 import type { FlightBooking, Vendor } from "@shared/schema";
 
 const PLATFORMS = ["MakeMyTrip", "Goibibo", "Cleartrip", "Via.com", "Akbar Travels", "Others"];
@@ -21,7 +21,7 @@ function formatINR(n: number) {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n);
 }
 
-const emptyForm = { clientName: "", clientPhone: "", referenceName: "", referencePhone: "", sector: "", travelDate: "", airline: "", platform: "", platformNotes: "", totalAmount: "", advancePaid: "0", paymentMode: "Cash", vendorId: "", reminderDate: "", reminderNote: "" };
+const emptyForm = { clientName: "", clientPhone: "", referenceName: "", referencePhone: "", sector: "", travelDate: "", airline: "", platform: "", platformNotes: "", totalAmount: "", advancePaid: "0", paymentMode: "Cash", vendorId: "" };
 
 export default function FlightBookings() {
   const { toast } = useToast();
@@ -33,18 +33,6 @@ export default function FlightBookings() {
 
   const query = useQuery<FlightBooking[]>({ queryKey: ["/api/flight-bookings"] });
   const vendorsQuery = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
-
-  const reminders = useMemo(() => {
-    if (!query.data) return [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return query.data.filter((f) => {
-      if (!f.reminderDate) return false;
-      const rd = new Date(f.reminderDate);
-      rd.setHours(0, 0, 0, 0);
-      return rd <= today;
-    });
-  }, [query.data]);
 
   const upcomingFlights = useMemo(() => {
     if (!query.data) return [];
@@ -64,10 +52,10 @@ export default function FlightBookings() {
       const body: any = { ...form };
       if (form.platform !== "Others") body.platformNotes = null;
       if (form.paymentMode !== "Credit/Pay Later") { body.vendorId = null; } else { body.vendorId = Number(form.vendorId) || null; }
-      if (!body.reminderDate) body.reminderDate = null;
-      if (!body.reminderNote) body.reminderNote = null;
       if (!body.referenceName) body.referenceName = null;
       if (!body.referencePhone) body.referencePhone = null;
+      body.reminderDate = null;
+      body.reminderNote = null;
       await apiRequest("POST", "/api/flight-bookings", body);
     },
     onSuccess: () => {
@@ -85,10 +73,10 @@ export default function FlightBookings() {
       const body: any = { ...form };
       if (form.platform !== "Others") body.platformNotes = null;
       if (form.paymentMode !== "Credit/Pay Later") { body.vendorId = null; } else { body.vendorId = Number(form.vendorId) || null; }
-      if (!body.reminderDate) body.reminderDate = null;
-      if (!body.reminderNote) body.reminderNote = null;
       if (!body.referenceName) body.referenceName = null;
       if (!body.referencePhone) body.referencePhone = null;
+      body.reminderDate = null;
+      body.reminderNote = null;
       await apiRequest("PUT", `/api/flight-bookings/${editId}`, body);
     },
     onSuccess: () => {
@@ -124,8 +112,6 @@ export default function FlightBookings() {
       advancePaid: String(f.advancePaid || "0"),
       paymentMode: f.paymentMode || "Cash",
       vendorId: f.vendorId ? String(f.vendorId) : "",
-      reminderDate: f.reminderDate || "",
-      reminderNote: f.reminderNote || "",
     });
     setEditOpen(true);
   };
@@ -177,10 +163,6 @@ export default function FlightBookings() {
           </Select>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-3">
-        <div><Label>Reminder Date</Label><Input type="date" value={form.reminderDate} onChange={(e) => setField("reminderDate", e.target.value)} data-testid="input-flight-reminder-date" /></div>
-        <div><Label>Reminder Note</Label><Input value={form.reminderNote} onChange={(e) => setField("reminderNote", e.target.value)} placeholder="Optional note" data-testid="input-flight-reminder-note" /></div>
-      </div>
       <Button type="submit" disabled={isEdit ? updateMut.isPending : createMut.isPending} data-testid="button-submit-flight">
         {(isEdit ? updateMut.isPending : createMut.isPending) ? "Saving..." : isEdit ? "Update Booking" : "Create Booking"}
       </Button>
@@ -189,19 +171,8 @@ export default function FlightBookings() {
 
   return (
     <div className="space-y-4">
-      {(reminders.length > 0 || upcomingFlights.length > 0) && (
+      {upcomingFlights.length > 0 && (
         <div className="space-y-2">
-          {reminders.map((r) => (
-            <Card key={`rem-${r.id}`}>
-              <CardContent className="flex items-center gap-3 p-3">
-                <Bell className="w-4 h-4 text-orange-500 shrink-0" />
-                <div className="text-sm">
-                  <span className="font-medium">{r.clientName}</span> - {r.reminderNote || "Reminder due"} ({r.sector}, {r.travelDate})
-                </div>
-                <Badge variant="outline" className="ml-auto shrink-0">Reminder</Badge>
-              </CardContent>
-            </Card>
-          ))}
           {upcomingFlights.map((f) => (
             <Card key={`alert-${f.id}`}>
               <CardContent className="flex items-center gap-3 p-3">
@@ -289,16 +260,6 @@ export default function FlightBookings() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Vendor</p>
                     <p className="font-medium" data-testid="text-detail-vendor">{vendorsQuery.data?.find(v => v.id === detailBooking.vendorId)?.name || "-"}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">Reminder Date</p>
-                  <p className="font-medium" data-testid="text-detail-reminder-date">{detailBooking.reminderDate || "-"}</p>
-                </div>
-                {detailBooking.reminderNote && (
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Reminder Note</p>
-                    <p className="font-medium" data-testid="text-detail-reminder-note">{detailBooking.reminderNote}</p>
                   </div>
                 )}
               </div>

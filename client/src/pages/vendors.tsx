@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Plus, HandCoins, Users } from "lucide-react";
+import { Plus, HandCoins, Users, Pencil } from "lucide-react";
 import type { Vendor } from "@shared/schema";
 
 function formatINR(n: number) {
@@ -26,8 +26,22 @@ export default function Vendors() {
   const [payDate, setPayDate] = useState("");
   const [payNotes, setPayNotes] = useState("");
   const [vendorName, setVendorName] = useState("");
+  const [editOpen, setEditOpen] = useState(false);
+  const [editVendorId, setEditVendorId] = useState<number | null>(null);
 
   const query = useQuery<Vendor[]>({ queryKey: ["/api/vendors"] });
+
+  const editMut = useMutation({
+    mutationFn: async () => { await apiRequest("PUT", `/api/vendors/${editVendorId}`, { name: vendorName }); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vendors"] });
+      setEditOpen(false);
+      setEditVendorId(null);
+      setVendorName("");
+      toast({ title: "Vendor updated" });
+    },
+    onError: () => toast({ title: "Error updating vendor", variant: "destructive" }),
+  });
 
   const createMut = useMutation({
     mutationFn: async () => { await apiRequest("POST", "/api/vendors", { name: vendorName }); },
@@ -79,6 +93,16 @@ export default function Vendors() {
         </Dialog>
       </div>
 
+      <Dialog open={editOpen} onOpenChange={(o) => { if (!o) { setEditOpen(false); setEditVendorId(null); setVendorName(""); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Vendor</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); editMut.mutate(); }} className="space-y-3">
+            <div><Label>Vendor Name</Label><Input value={vendorName} onChange={(e) => setVendorName(e.target.value)} placeholder="e.g. RiyaB2B" required data-testid="input-edit-vendor-name" /></div>
+            <Button type="submit" disabled={editMut.isPending} data-testid="button-submit-edit-vendor">{editMut.isPending ? "Saving..." : "Update Vendor"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={payVendorId !== null} onOpenChange={(o) => { if (!o) setPayVendorId(null); }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Record Payment to Vendor</DialogTitle></DialogHeader>
@@ -116,9 +140,14 @@ export default function Vendors() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Button variant="outline" size="sm" onClick={() => { setPayVendorId(v.id); setPayAmount(""); setPayDate(""); setPayNotes(""); }} data-testid={`button-pay-vendor-${v.id}`}>
-                        <HandCoins className="w-4 h-4 mr-1" /> Pay
-                      </Button>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <Button variant="outline" size="sm" onClick={() => { setEditVendorId(v.id); setVendorName(v.name); setEditOpen(true); }} data-testid={`button-edit-vendor-${v.id}`}>
+                          <Pencil className="w-4 h-4 mr-1" /> Edit
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => { setPayVendorId(v.id); setPayAmount(""); setPayDate(""); setPayNotes(""); }} data-testid={`button-pay-vendor-${v.id}`}>
+                          <HandCoins className="w-4 h-4 mr-1" /> Pay
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

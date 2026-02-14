@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Plus, Lock, RefreshCw, Check, Clock, FileCheck } from "lucide-react";
+import { Plus, Lock, RefreshCw, Check, Clock, FileCheck, Pencil } from "lucide-react";
 import type { VisaApplication } from "@shared/schema";
 
 function StatusBadge({ status, locked }: { status: string; locked?: boolean }) {
@@ -27,6 +27,8 @@ export default function VisaApplications() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [detailVisa, setDetailVisa] = useState<VisaApplication | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editVisaId, setEditVisaId] = useState<number | null>(null);
   const [form, setForm] = useState({ clientName: "", passportNumber: "", phone: "", visaType: "" });
 
   const query = useQuery<VisaApplication[]>({ queryKey: ["/api/visa-applications"] });
@@ -40,6 +42,18 @@ export default function VisaApplications() {
       toast({ title: "Visa application created" });
     },
     onError: () => toast({ title: "Error", variant: "destructive" }),
+  });
+
+  const editMut = useMutation({
+    mutationFn: async () => { await apiRequest("PUT", `/api/visa-applications/${editVisaId}`, form); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/visa-applications"] });
+      setEditOpen(false);
+      setEditVisaId(null);
+      setForm({ clientName: "", passportNumber: "", phone: "", visaType: "" });
+      toast({ title: "Visa application updated" });
+    },
+    onError: () => toast({ title: "Error updating visa application", variant: "destructive" }),
   });
 
   const statusMut = useMutation({
@@ -151,7 +165,22 @@ export default function VisaApplications() {
         <Dialog open={!!detailVisa} onOpenChange={(isOpen) => !isOpen && setDetailVisa(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle data-testid={`text-detail-title-${detailVisa.id}`}>{detailVisa.clientName}</DialogTitle>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <DialogTitle data-testid={`text-detail-title-${detailVisa.id}`}>{detailVisa.clientName}</DialogTitle>
+                <Button variant="outline" size="sm" onClick={() => {
+                  setEditVisaId(detailVisa.id);
+                  setForm({
+                    clientName: detailVisa.clientName,
+                    passportNumber: detailVisa.passportNumber,
+                    phone: detailVisa.phone,
+                    visaType: detailVisa.visaType,
+                  });
+                  setDetailVisa(null);
+                  setEditOpen(true);
+                }} data-testid={`button-edit-visa-${detailVisa.id}`}>
+                  <Pencil className="w-4 h-4 mr-1" /> Edit
+                </Button>
+              </div>
             </DialogHeader>
 
             <div className="space-y-6">
@@ -215,6 +244,29 @@ export default function VisaApplications() {
           </DialogContent>
         </Dialog>
       )}
+      <Dialog open={editOpen} onOpenChange={(o) => { if (!o) { setEditOpen(false); setEditVisaId(null); setForm({ clientName: "", passportNumber: "", phone: "", visaType: "" }); } }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Visa Application</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); editMut.mutate(); }} className="space-y-3">
+            <div><Label>Client Name</Label><Input value={form.clientName} onChange={(e) => setField("clientName", e.target.value)} required data-testid="input-edit-visa-client" /></div>
+            <div><Label>Passport Number</Label><Input value={form.passportNumber} onChange={(e) => setField("passportNumber", e.target.value)} required data-testid="input-edit-visa-passport" /></div>
+            <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setField("phone", e.target.value)} required data-testid="input-edit-visa-phone" /></div>
+            <div>
+              <Label>Visa Type</Label>
+              <Select value={form.visaType} onValueChange={(v) => setField("visaType", v)}>
+                <SelectTrigger data-testid="select-edit-visa-type"><SelectValue placeholder="Select visa type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Employment">Employment</SelectItem>
+                  <SelectItem value="Business">Business</SelectItem>
+                  <SelectItem value="Tourist">Tourist</SelectItem>
+                  <SelectItem value="Student">Student</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" disabled={editMut.isPending} data-testid="button-submit-edit-visa">{editMut.isPending ? "Saving..." : "Update Application"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -24,7 +24,8 @@ const emptyMember: CabRunMember = { name: "", phone: "", referenceName: "", refe
 const emptyForm = {
   bookingId: "", clientName: "", advanceAmount: "0", referenceName: "", referencePhone: "",
   startKm: "", closingKm: "",
-  isReturnTrip: false, returnDate: "", returnPassengers: "", returnClientName: "", returnAdvance: "0",
+  totalPrice: "0", pendingAmount: "0",
+  isReturnTrip: false, returnDate: "", returnAdvance: "0",
   driverCollection: "0", expenseDiesel: "0", expenseToll: "0", expenseParking: "0", expenseOthers: "0", driverSalary: "0",
 };
 
@@ -35,6 +36,7 @@ export default function CabRuns() {
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [members, setMembers] = useState<CabRunMember[]>([]);
+  const [returnMembers, setReturnMembers] = useState<CabRunMember[]>([]);
 
   const query = useQuery<CabRun[]>({ queryKey: ["/api/cab-runs"] });
   const bookingsQuery = useQuery<CabBooking[]>({ queryKey: ["/api/cab-bookings"] });
@@ -62,10 +64,11 @@ export default function CabRuns() {
       members: members.filter((m) => m.name.trim()),
       startKm: form.startKm ? Number(form.startKm) : null,
       closingKm: form.closingKm ? Number(form.closingKm) : null,
+      totalPrice: form.totalPrice || "0",
+      pendingAmount: form.pendingAmount || "0",
       isReturnTrip: form.isReturnTrip,
       returnDate: form.returnDate || null,
-      returnPassengers: form.returnPassengers ? Number(form.returnPassengers) : null,
-      returnClientName: form.returnClientName || null,
+      returnMembers: returnMembers.filter((m) => m.name.trim()),
       returnAdvance: form.returnAdvance || "0",
       driverCollection: form.driverCollection || "0",
       expenseDiesel: form.expenseDiesel || "0",
@@ -108,6 +111,7 @@ export default function CabRuns() {
   const resetForm = () => {
     setForm({ ...emptyForm });
     setMembers([]);
+    setReturnMembers([]);
   };
 
   const setField = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
@@ -116,6 +120,12 @@ export default function CabRuns() {
   const removeMember = (i: number) => setMembers((m) => m.filter((_, idx) => idx !== i));
   const updateMember = (i: number, key: keyof CabRunMember, val: string) => {
     setMembers((m) => m.map((mem, idx) => idx === i ? { ...mem, [key]: val } : mem));
+  };
+
+  const addReturnMember = () => setReturnMembers((m) => [...m, { ...emptyMember }]);
+  const removeReturnMember = (i: number) => setReturnMembers((m) => m.filter((_, idx) => idx !== i));
+  const updateReturnMember = (i: number, key: keyof CabRunMember, val: string) => {
+    setReturnMembers((m) => m.map((mem, idx) => idx === i ? { ...mem, [key]: val } : mem));
   };
 
   const openEdit = (r: CabRun) => {
@@ -128,10 +138,10 @@ export default function CabRuns() {
       referencePhone: r.referencePhone || "",
       startKm: r.startKm ? String(r.startKm) : "",
       closingKm: r.closingKm ? String(r.closingKm) : "",
+      totalPrice: String(r.totalPrice || "0"),
+      pendingAmount: String(r.pendingAmount || "0"),
       isReturnTrip: r.isReturnTrip || false,
       returnDate: r.returnDate || "",
-      returnPassengers: r.returnPassengers ? String(r.returnPassengers) : "",
-      returnClientName: r.returnClientName || "",
       returnAdvance: String(r.returnAdvance || "0"),
       driverCollection: String(r.driverCollection || "0"),
       expenseDiesel: String(r.expenseDiesel || "0"),
@@ -142,18 +152,46 @@ export default function CabRuns() {
     });
     const existingMembers = Array.isArray(r.members) ? (r.members as CabRunMember[]) : [];
     setMembers(existingMembers.length > 0 ? existingMembers : []);
+    const existingReturnMembers = Array.isArray(r.returnMembers) ? (r.returnMembers as CabRunMember[]) : [];
+    setReturnMembers(existingReturnMembers.length > 0 ? existingReturnMembers : []);
     setEditOpen(true);
   };
 
   const membersAdvance = members.reduce((sum, m) => sum + Number(m.advancePaid || 0), 0);
+  const returnMembersAdvance = returnMembers.reduce((sum, m) => sum + Number(m.advancePaid || 0), 0);
   const onwardAdv = Number(form.advanceAmount || 0);
   const returnAdv = Number(form.returnAdvance || 0);
   const driverCol = Number(form.driverCollection || 0);
-  const totalCollection = onwardAdv + returnAdv + driverCol + membersAdvance;
+  const totalCollection = onwardAdv + returnAdv + driverCol + membersAdvance + returnMembersAdvance;
   const totalExpenses = Number(form.expenseDiesel || 0) + Number(form.expenseToll || 0) + Number(form.expenseParking || 0) + Number(form.expenseOthers || 0) + Number(form.driverSalary || 0);
   const totalProfit = totalCollection - totalExpenses;
-  const margin = totalCollection - onwardAdv - returnAdv - membersAdvance - totalExpenses;
+  const margin = totalCollection - onwardAdv - returnAdv - membersAdvance - returnMembersAdvance - totalExpenses;
   const totalKm = (Number(form.closingKm || 0) - Number(form.startKm || 0));
+  const computedPending = Number(form.totalPrice || 0) - onwardAdv - membersAdvance - returnAdv - returnMembersAdvance;
+
+  const renderMembersList = (list: CabRunMember[], updateFn: (i: number, key: keyof CabRunMember, val: string) => void, removeFn: (i: number) => void, prefix: string) => (
+    <>
+      {list.map((m, i) => (
+        <Card key={i}>
+          <CardContent className="p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">Member {i + 1}</span>
+              <Button type="button" size="icon" variant="ghost" onClick={() => removeFn(i)} data-testid={`button-remove-${prefix}-${i}`}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-xs">Name</Label><Input value={m.name} onChange={(e) => updateFn(i, "name", e.target.value)} placeholder="Name" data-testid={`input-${prefix}-name-${i}`} /></div>
+              <div><Label className="text-xs">Phone</Label><Input value={m.phone || ""} onChange={(e) => updateFn(i, "phone", e.target.value)} placeholder="Phone" data-testid={`input-${prefix}-phone-${i}`} /></div>
+              <div><Label className="text-xs">Ref. Name</Label><Input value={m.referenceName || ""} onChange={(e) => updateFn(i, "referenceName", e.target.value)} placeholder="Reference Name" data-testid={`input-${prefix}-ref-name-${i}`} /></div>
+              <div><Label className="text-xs">Ref. Number</Label><Input value={m.referencePhone || ""} onChange={(e) => updateFn(i, "referencePhone", e.target.value)} placeholder="Reference Phone" data-testid={`input-${prefix}-ref-phone-${i}`} /></div>
+            </div>
+            <div><Label className="text-xs">Advance Paid (INR)</Label><Input type="number" value={m.advancePaid || "0"} onChange={(e) => updateFn(i, "advancePaid", e.target.value)} data-testid={`input-${prefix}-advance-${i}`} /></div>
+          </CardContent>
+        </Card>
+      ))}
+    </>
+  );
 
   const formFields = (isEdit: boolean) => (
     <form onSubmit={(e) => { e.preventDefault(); isEdit ? updateMut.mutate() : createMut.mutate(); }} className="space-y-4">
@@ -186,25 +224,7 @@ export default function CabRuns() {
             </Button>
           </div>
           {members.length === 0 && <div className="text-sm text-muted-foreground">No additional members added</div>}
-          {members.map((m, i) => (
-            <Card key={i}>
-              <CardContent className="p-3 space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium">Member {i + 1}</span>
-                  <Button type="button" size="icon" variant="ghost" onClick={() => removeMember(i)} data-testid={`button-remove-member-${i}`}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-xs">Name</Label><Input value={m.name} onChange={(e) => updateMember(i, "name", e.target.value)} placeholder="Name" data-testid={`input-member-name-${i}`} /></div>
-                  <div><Label className="text-xs">Phone</Label><Input value={m.phone || ""} onChange={(e) => updateMember(i, "phone", e.target.value)} placeholder="Phone" data-testid={`input-member-phone-${i}`} /></div>
-                  <div><Label className="text-xs">Ref. Name</Label><Input value={m.referenceName || ""} onChange={(e) => updateMember(i, "referenceName", e.target.value)} placeholder="Reference Name" data-testid={`input-member-ref-name-${i}`} /></div>
-                  <div><Label className="text-xs">Ref. Number</Label><Input value={m.referencePhone || ""} onChange={(e) => updateMember(i, "referencePhone", e.target.value)} placeholder="Reference Phone" data-testid={`input-member-ref-phone-${i}`} /></div>
-                </div>
-                <div><Label className="text-xs">Advance Paid (INR)</Label><Input type="number" value={m.advancePaid || "0"} onChange={(e) => updateMember(i, "advancePaid", e.target.value)} data-testid={`input-member-advance-${i}`} /></div>
-              </CardContent>
-            </Card>
-          ))}
+          {renderMembersList(members, updateMember, removeMember, "member")}
         </CardContent>
       </Card>
 
@@ -213,6 +233,14 @@ export default function CabRuns() {
         <div><Label>Closing KM</Label><Input type="number" value={form.closingKm} onChange={(e) => setField("closingKm", e.target.value)} data-testid="input-run-closing-km" /></div>
       </div>
       {(form.startKm || form.closingKm) && <div className="text-sm text-muted-foreground">Total Distance: {totalKm > 0 ? totalKm : 0} km</div>}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div><Label>Total Price (INR)</Label><Input type="number" value={form.totalPrice} onChange={(e) => setField("totalPrice", e.target.value)} data-testid="input-run-total-price" /></div>
+        <div>
+          <Label>Pending Amount (INR)</Label>
+          <div className="text-lg font-semibold mt-1 text-orange-600 dark:text-orange-400" data-testid="text-run-pending">{formatINR(Math.max(0, computedPending))}</div>
+        </div>
+      </div>
 
       <div className="flex items-center gap-2">
         <Switch checked={form.isReturnTrip} onCheckedChange={(v) => setField("isReturnTrip", v)} data-testid="switch-return-trip" />
@@ -224,9 +252,15 @@ export default function CabRuns() {
           <CardContent className="p-3 space-y-3">
             <div className="font-medium text-sm">Return Trip Details</div>
             <div><Label>Return Date</Label><Input type="date" value={form.returnDate} onChange={(e) => setField("returnDate", e.target.value)} data-testid="input-run-return-date" /></div>
-            <div><Label>No. of Passengers</Label><Input type="number" value={form.returnPassengers} onChange={(e) => setField("returnPassengers", e.target.value)} data-testid="input-run-return-pax" /></div>
-            <div><Label>Return Client Name</Label><Input value={form.returnClientName} onChange={(e) => setField("returnClientName", e.target.value)} data-testid="input-run-return-client" /></div>
             <div><Label>Return Advance</Label><Input type="number" value={form.returnAdvance} onChange={(e) => setField("returnAdvance", e.target.value)} data-testid="input-run-return-advance" /></div>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="font-medium text-sm">Return Members</div>
+              <Button type="button" variant="outline" size="sm" onClick={addReturnMember} data-testid="button-add-return-member">
+                <UserPlus className="w-4 h-4 mr-1" /> Add Member
+              </Button>
+            </div>
+            {returnMembers.length === 0 && <div className="text-sm text-muted-foreground">No return members added</div>}
+            {renderMembersList(returnMembers, updateReturnMember, removeReturnMember, "return-member")}
           </CardContent>
         </Card>
       )}
@@ -249,6 +283,9 @@ export default function CabRuns() {
       <Card>
         <CardContent className="p-3 space-y-1">
           <div className="font-medium text-sm mb-2">Summary</div>
+          <div className="flex justify-between gap-1 text-sm"><span>Total Price</span><span className="font-medium">{formatINR(Number(form.totalPrice || 0))}</span></div>
+          <div className="flex justify-between gap-1 text-sm"><span>Pending Amount</span><span className="font-medium text-orange-600 dark:text-orange-400">{formatINR(Math.max(0, computedPending))}</span></div>
+          <div className="border-t my-1" />
           <div className="flex justify-between gap-1 text-sm"><span>Total Collection</span><span className="font-medium">{formatINR(totalCollection)}</span></div>
           <div className="flex justify-between gap-1 text-sm"><span>Total Expenses</span><span className="font-medium">{formatINR(totalExpenses)}</span></div>
           <div className="flex justify-between gap-1 text-sm font-semibold"><span>Total Profit</span><span>{formatINR(totalProfit)}</span></div>
@@ -295,7 +332,8 @@ export default function CabRuns() {
                 <TableRow>
                   <TableHead>Client</TableHead>
                   <TableHead>Members</TableHead>
-                  <TableHead>Advance</TableHead>
+                  <TableHead>Total Price</TableHead>
+                  <TableHead>Pending</TableHead>
                   <TableHead>KM</TableHead>
                   <TableHead>Return</TableHead>
                   <TableHead>Collection</TableHead>
@@ -311,17 +349,23 @@ export default function CabRuns() {
                   const name = r.clientName || booking?.clientName || `#${r.bookingId || "?"}`;
                   const adv = Number(r.advanceAmount || booking?.advanceAmount || 0);
                   const membs = Array.isArray(r.members) ? (r.members as CabRunMember[]) : [];
+                  const retMembs = Array.isArray(r.returnMembers) ? (r.returnMembers as CabRunMember[]) : [];
                   const membAdv = membs.reduce((s, m) => s + Number(m.advancePaid || 0), 0);
-                  const col = adv + Number(r.returnAdvance || 0) + Number(r.driverCollection || 0) + membAdv;
+                  const retMembAdv = retMembs.reduce((s, m) => s + Number(m.advancePaid || 0), 0);
+                  const col = adv + Number(r.returnAdvance || 0) + Number(r.driverCollection || 0) + membAdv + retMembAdv;
                   const exp = Number(r.expenseDiesel || 0) + Number(r.expenseToll || 0) + Number(r.expenseParking || 0) + Number(r.expenseOthers || 0) + Number(r.driverSalary || 0);
                   const km = (r.closingKm && r.startKm) ? r.closingKm - r.startKm : null;
+                  const tp = Number(r.totalPrice || 0);
+                  const pend = tp - adv - membAdv - Number(r.returnAdvance || 0) - retMembAdv;
+                  const allMembers = [...membs, ...retMembs];
                   return (
                     <TableRow key={r.id} data-testid={`row-run-${r.id}`}>
                       <TableCell className="font-medium">{name}</TableCell>
-                      <TableCell>{membs.length > 0 ? membs.map((m) => m.name).join(", ") : "-"}</TableCell>
-                      <TableCell>{formatINR(adv + membAdv)}</TableCell>
+                      <TableCell>{allMembers.length > 0 ? allMembers.map((m) => m.name).join(", ") : "-"}</TableCell>
+                      <TableCell>{formatINR(tp)}</TableCell>
+                      <TableCell className={pend > 0 ? "font-medium text-orange-600 dark:text-orange-400" : ""}>{formatINR(Math.max(0, pend))}</TableCell>
                       <TableCell>{km !== null ? `${km} km` : "-"}</TableCell>
-                      <TableCell>{r.isReturnTrip ? `${r.returnClientName || "Yes"}` : "No"}</TableCell>
+                      <TableCell>{r.isReturnTrip ? (retMembs.length > 0 ? `${retMembs.length} members` : "Yes") : "No"}</TableCell>
                       <TableCell>{formatINR(col)}</TableCell>
                       <TableCell>{formatINR(exp)}</TableCell>
                       <TableCell className="font-medium">{formatINR(col - exp)}</TableCell>
@@ -334,7 +378,7 @@ export default function CabRuns() {
                     </TableRow>
                   );
                 })}
-                {(query.data || []).length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No cab runs yet</TableCell></TableRow>}
+                {(query.data || []).length === 0 && <TableRow><TableCell colSpan={11} className="text-center text-muted-foreground py-8">No cab runs yet</TableCell></TableRow>}
               </TableBody>
             </Table>
           </CardContent>

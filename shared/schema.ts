@@ -83,10 +83,12 @@ export const cabRuns = pgTable("cab_runs", {
   startKm: integer("start_km"),
   closingKm: integer("closing_km"),
   
+  totalPrice: numeric("total_price", { precision: 10, scale: 2 }).default("0"),
+  pendingAmount: numeric("pending_amount", { precision: 10, scale: 2 }).default("0"),
+
   isReturnTrip: boolean("is_return_trip").default(false),
   returnDate: date("return_date"),
-  returnPassengers: integer("return_passengers"),
-  returnClientName: text("return_client_name"),
+  returnMembers: jsonb("return_members").default([]),
 
   returnAdvance: numeric("return_advance", { precision: 10, scale: 2 }).default("0"),
   driverCollection: numeric("driver_collection", { precision: 10, scale: 2 }).default("0"),

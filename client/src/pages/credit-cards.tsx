@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { Plus, CreditCard as CreditCardIcon, AlertTriangle } from "lucide-react";
+import { Plus, CreditCard as CreditCardIcon, AlertTriangle, Pencil } from "lucide-react";
 import type { CreditCard } from "@shared/schema";
 
 function formatINR(n: number) {
@@ -22,6 +22,9 @@ function formatINR(n: number) {
 export default function CreditCards() {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({ cardName: "", bankName: "", totalLimit: "", usedAmount: "0", nextBillDate: "" });
   const [repayId, setRepayId] = useState<number | null>(null);
   const [repayAmount, setRepayAmount] = useState("");
   const [form, setForm] = useState({ cardName: "", bankName: "", totalLimit: "", usedAmount: "0", nextBillDate: "" });
@@ -50,7 +53,31 @@ export default function CreditCards() {
     onError: () => toast({ title: "Error", variant: "destructive" }),
   });
 
+  const editMut = useMutation({
+    mutationFn: async () => { await apiRequest("PUT", `/api/credit-cards/${editId}`, editForm); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/credit-cards"] });
+      setEditOpen(false);
+      setEditId(null);
+      toast({ title: "Credit card updated" });
+    },
+    onError: () => toast({ title: "Error updating card", variant: "destructive" }),
+  });
+
   const setField = (key: string, val: string) => setForm((f) => ({ ...f, [key]: val }));
+  const setEditField = (key: string, val: string) => setEditForm((f) => ({ ...f, [key]: val }));
+
+  const openEditDialog = (card: CreditCard) => {
+    setEditId(card.id);
+    setEditForm({
+      cardName: card.cardName,
+      bankName: card.bankName,
+      totalLimit: String(card.totalLimit),
+      usedAmount: String(card.usedAmount),
+      nextBillDate: card.nextBillDate,
+    });
+    setEditOpen(true);
+  };
 
   return (
     <div className="space-y-4">
@@ -83,6 +110,20 @@ export default function CreditCards() {
           <form onSubmit={(e) => { e.preventDefault(); repayMut.mutate(); }} className="space-y-3">
             <div><Label>Amount Paid</Label><Input type="number" value={repayAmount} onChange={(e) => setRepayAmount(e.target.value)} required data-testid="input-repay-amount" /></div>
             <Button type="submit" disabled={repayMut.isPending} data-testid="button-submit-repay">{repayMut.isPending ? "Processing..." : "Record Payment"}</Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit Credit Card</DialogTitle></DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); editMut.mutate(); }} className="space-y-3">
+            <div><Label>Card Name</Label><Input value={editForm.cardName} onChange={(e) => setEditField("cardName", e.target.value)} required data-testid="input-edit-card-name" /></div>
+            <div><Label>Bank Name</Label><Input value={editForm.bankName} onChange={(e) => setEditField("bankName", e.target.value)} required data-testid="input-edit-card-bank" /></div>
+            <div><Label>Total Limit (INR)</Label><Input type="number" value={editForm.totalLimit} onChange={(e) => setEditField("totalLimit", e.target.value)} required data-testid="input-edit-card-limit" /></div>
+            <div><Label>Used Amount (INR)</Label><Input type="number" value={editForm.usedAmount} onChange={(e) => setEditField("usedAmount", e.target.value)} data-testid="input-edit-card-used" /></div>
+            <div><Label>Next Bill Date</Label><Input type="date" value={editForm.nextBillDate} onChange={(e) => setEditField("nextBillDate", e.target.value)} required data-testid="input-edit-card-bill-date" /></div>
+            <Button type="submit" disabled={editMut.isPending} data-testid="button-submit-edit-card">{editMut.isPending ? "Saving..." : "Update Card"}</Button>
           </form>
         </DialogContent>
       </Dialog>
@@ -136,9 +177,14 @@ export default function CreditCards() {
 
                   <div className="flex items-center justify-between gap-2 text-sm flex-wrap">
                     <span className="text-muted-foreground">Next Bill: {card.nextBillDate}</span>
-                    <Button variant="outline" size="sm" onClick={() => { setRepayId(card.id); setRepayAmount(""); }} data-testid={`button-repay-${card.id}`}>
-                      Bill Paid
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button size="icon" variant="ghost" onClick={() => openEditDialog(card)} data-testid={`button-edit-card-${card.id}`}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => { setRepayId(card.id); setRepayAmount(""); }} data-testid={`button-repay-${card.id}`}>
+                        Bill Paid
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
