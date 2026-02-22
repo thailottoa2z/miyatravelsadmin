@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <system.webServer>
+    <rewrite>
+      <rules>
+        <rule name="React Router" stopProcessing="true">
+          <match url=".*" />
+          <conditions logicalGrouping="MatchAll">
+            <!-- Don't process actual files and directories -->
+            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+            <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+            <!-- Don't process API calls -->
+            <add input="{REQUEST_PATH}" pattern="^/api" negate="true" />
+          </conditions>
+          <!-- Rewrite to index.html for client-side routing -->
+          <action type="Rewrite" url="/" />
+        </rule>
+      </rules>
+    </rewrite>
+    
+    <!-- Set correct MIME types for modern file formats -->
+    <staticContent>
+      <mimeType fileExtension=".js" mimeType="application/javascript" />
+      <mimeType fileExtension=".mjs" mimeType="application/javascript" />
+      <mimeType fileExtension=".json" mimeType="application/json" />
+      <mimeType fileExtension=".woff" mimeType="font/woff" />
+      <mimeType fileExtension=".woff2" mimeType="font/woff2" />
+      <mimeType fileExtension=".ttf" mimeType="font/ttf" />
+      <mimeType fileExtension=".eot" mimeType="application/vnd.ms-fontobject" />
+      <mimeType fileExtension=".svg" mimeType="image/svg+xml" />
+      <mimeType fileExtension=".webp" mimeType="image/webp" />
+    </staticContent>
+    
+    <!-- Enable compression for better performance -->
+    <httpCompression directory="%SystemDrive%\inetpub\temp\IIS Temporary Compressed Files">
+      <scheme name="gzip" dll="%Windir%\system32\inetsrv\gzip.dll" staticCompressionLevel="9" />
+    </httpCompression>
+    
+    <!-- Cache static assets -->
+    <caching>
+      <staticContent>
+        <!-- Cache for 30 days (2592000 seconds) -->
+        <clientCache cacheControlMode="UseMaxAge" cacheControlMaxAge="30.00:00:00" />
+      </staticContent>
+    </caching>
+    
+    <!-- Security headers -->
+    <httpResponseHeaders>
+      <add name="X-Content-Type-Options" value="nosniff" />
+      <add name="X-Frame-Options" value="SAMEORIGIN" />
+      <add name="X-XSS-Protection" value="1; mode=block" />
+      <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
+    </httpResponseHeaders>
+  </system.webServer>
+</configuration>
