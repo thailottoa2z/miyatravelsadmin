@@ -1,11 +1,11 @@
 
 import { 
   cashTransactions, flightBookings, vehicles, cabBookings, cabRuns, visaApplications,
-  creditCards, vendors, vendorPayments, attestationServices,
+  creditCards, vendors, vendorPayments, attestationServices, serviceCalls,
   type InsertCashTransaction, type InsertFlightBooking, type InsertVehicle, type InsertCabBooking, type InsertCabRun, type InsertVisaApplication,
-  type InsertCreditCard, type InsertVendor, type InsertVendorPayment, type InsertAttestationService,
+  type InsertCreditCard, type InsertVendor, type InsertVendorPayment, type InsertAttestationService, type InsertServiceCall,
   type CashTransaction, type FlightBooking, type Vehicle, type CabBooking, type CabRun, type VisaApplication,
-  type CreditCard, type Vendor, type VendorPayment, type AttestationService
+  type CreditCard, type Vendor, type VendorPayment, type AttestationService, type ServiceCall
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, ilike, or } from "drizzle-orm";
@@ -60,6 +60,14 @@ export interface IStorage {
   createAttestationService(data: InsertAttestationService): Promise<AttestationService>;
   updateAttestationService(id: number, data: Partial<InsertAttestationService>): Promise<AttestationService | undefined>;
   deleteAttestationService(id: number): Promise<void>;
+
+  // Service Calls
+  getServiceCalls(status?: string): Promise<ServiceCall[]>;
+  getServiceCall(id: number): Promise<ServiceCall | undefined>;
+  createServiceCall(data: InsertServiceCall): Promise<ServiceCall>;
+  updateServiceCall(id: number, data: Partial<InsertServiceCall>): Promise<ServiceCall | undefined>;
+  deleteServiceCall(id: number): Promise<void>;
+  getServiceCallStats(): Promise<{ total: number; pending: number; remainder: number; completed: number; cancelled: number }>;
 
   // Global Search
   searchGlobal(query: string): Promise<{ visa: VisaApplication[], flights: FlightBooking[], cabs: CabBooking[] }>;
@@ -251,6 +259,98 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAttestationService(id: number): Promise<void> {
     await db.delete(attestationServices).where(eq(attestationServices.id, id));
+  }
+
+  async getServiceCalls(status?: string): Promise<ServiceCall[]> {
+    if (status && status !== "all") {
+      return await db.select().from(serviceCalls).where(eq(serviceCalls.status, status)).orderBy(desc(serviceCalls.createdAt));
+    }
+    return await db.select().from(serviceCalls).orderBy(desc(serviceCalls.createdAt));
+  }
+
+  async getServiceCall(id: number): Promise<ServiceCall | undefined> {
+    const [call] = await db.select().from(serviceCalls).where(eq(serviceCalls.id, id));
+    return call;
+  }
+
+  async createServiceCall(data: InsertServiceCall): Promise<ServiceCall> {
+    const [call] = await db.insert(serviceCalls).values(data).returning();
+    return call;
+  }
+
+  async updateServiceCall(id: number, data: Partial<InsertServiceCall>): Promise<ServiceCall | undefined> {
+    const [updated] = await db.update(serviceCalls).set({ ...data, updatedAt: new Date() }).where(eq(serviceCalls.id, id)).returning();
+    return updated;
+  }
+
+  async deleteServiceCall(id: number): Promise<void> {
+    await db.delete(serviceCalls).where(eq(serviceCalls.id, id));
+  }
+
+  async getServiceCallStats(): Promise<{ total: number; pending: number; remainder: number; completed: number; cancelled: number }> {
+    console.log("\n=== STATS CALCULATION START ===");
+    
+    let calls = await db.select().from(serviceCalls);
+    
+    console.log("Step 1: Fetched", calls.length, "records from DB");
+    calls.forEach(call => {
+      console.log(`  - ID: ${call.id}, Status: '${call.status}', Date: ${call.callDate}`);
+    });
+    
+    // Helper functions
+    const getDateString = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    const normalizeDateString = (date: any): string => {
+      if (typeof date === 'string') {
+        return date.split('T')[0];
+      }
+      if (date instanceof Date) {
+        return getDateString(date);
+      }
+      return date.toString().split('T')[0];
+    };
+    
+    const today = getDateString(new Date());
+    console.log("Step 2: Today's date:", today);
+    
+    // Auto-update pending records with today's date
+    let updatedCount = 0;
+    for (const call of calls) {
+      const callDateStr = normalizeDateString(call.callDate);
+      if (callDateStr === today && call.status === "pending") {
+        console.log(`  Auto-updating ID ${call.id} from pending to remainder`);
+        await this.updateServiceCall(call.id, { status: "remainder" });
+        updatedCount++;
+      }
+    }
+    console.log(`Step 3: Auto-updated ${updatedCount} records`);
+    
+    // RE-FETCH from database to get the updated values
+    calls = await db.select().from(serviceCalls);
+    
+    console.log("Step 4: Re-fetched", calls.length, "records after updates");
+    calls.forEach(call => {
+      console.log(`  - ID: ${call.id}, Status: '${call.status}'`);
+    });
+    
+    // Calculate stats
+    const stats = {
+      total: calls.length,
+      pending: calls.filter(c => c.status === "pending").length,
+      remainder: calls.filter(c => c.status === "remainder").length,
+      completed: calls.filter(c => c.status === "completed").length,
+      cancelled: calls.filter(c => c.status === "cancelled").length,
+    };
+    
+    console.log("Step 5: Final stats:", JSON.stringify(stats));
+    console.log("=== STATS CALCULATION END ===\n");
+    
+    return stats;
   }
 
   async searchGlobal(query: string): Promise<{ visa: VisaApplication[], flights: FlightBooking[], cabs: CabBooking[] }> {

@@ -7,12 +7,14 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider, useTheme } from "@/lib/theme";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sun, Moon, Search } from "lucide-react";
 import { useState } from "react";
 import { useLocation as useWouterLocation } from "wouter";
 
+import LoginPage from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import FlightBookings from "@/pages/flight-bookings";
 import CabBookings from "@/pages/cab-bookings";
@@ -21,6 +23,7 @@ import CreditCards from "@/pages/credit-cards";
 import Vendors from "@/pages/vendors";
 import VisaApplications from "@/pages/visa-applications";
 import AttestationServices from "@/pages/attestation-services";
+import ServiceCalls from "@/pages/servicecalls";
 import GlobalSearchResults from "@/pages/global-search";
 import NotFound from "@/pages/not-found";
 
@@ -70,13 +73,14 @@ function Router() {
       <Route path="/credit-cards" component={CreditCards} />
       <Route path="/vendors" component={Vendors} />
       <Route path="/visa" component={VisaApplications} />
+      <Route path="/servicecalls" component={ServiceCalls} />
       <Route path="/search" component={GlobalSearchResults} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-function AppLayout() {
+function AppLayoutContent() {
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -103,12 +107,32 @@ function AppLayout() {
   );
 }
 
+function AuthGuard() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return <AppLayoutContent />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
-          <AppLayout />
+          <AuthProvider>
+            <AuthGuard />
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </TooltipProvider>

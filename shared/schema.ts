@@ -8,6 +8,7 @@ import { z } from "zod";
 export const transactionTypeEnum = pgEnum("transaction_type", ["in", "out"]);
 export const medicalStatusEnum = pgEnum("medical_status", ["pending", "fit", "unfit"]);
 export const processStatusEnum = pgEnum("process_status", ["locked", "pending", "completed"]);
+export const enquiredServiceTypeEnum = pgEnum("enquired_service_type", ["Flight Ticket", "Cab", "Passport / Visa", "Medical"]);
 
 // === TABLE DEFINITIONS ===
 
@@ -166,6 +167,20 @@ export const vendorPayments = pgTable("vendor_payments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// 11. Service Calls
+export const serviceCalls = pgTable("service_calls", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  callDate: date("call_date").notNull(),
+  enquiredServiceType: enquiredServiceTypeEnum("enquired_service_type"),
+  status: text("status").default("pending").notNull(), // pending, reminder, completed, cancelled
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // === RELATIONS ===
 export const cabBookingsRelations = relations(cabBookings, ({ one, many }) => ({
   vehicle: one(vehicles, {
@@ -232,6 +247,7 @@ export const insertCreditCardSchema = createInsertSchema(creditCards).omit({ id:
 export const insertVendorSchema = createInsertSchema(vendors).omit({ id: true, createdAt: true });
 export const insertVendorPaymentSchema = createInsertSchema(vendorPayments).omit({ id: true, createdAt: true });
 export const insertAttestationServiceSchema = createInsertSchema(attestationServices).omit({ id: true, createdAt: true });
+export const insertServiceCallSchema = createInsertSchema(serviceCalls).omit({ id: true, createdAt: true, updatedAt: true });
 
 // === EXPLICIT TYPES ===
 export type CashTransaction = typeof cashTransactions.$inferSelect;
@@ -254,5 +270,7 @@ export type VendorPayment = typeof vendorPayments.$inferSelect;
 export type InsertVendorPayment = z.infer<typeof insertVendorPaymentSchema>;
 export type AttestationService = typeof attestationServices.$inferSelect;
 export type InsertAttestationService = z.infer<typeof insertAttestationServiceSchema>;
+export type ServiceCall = typeof serviceCalls.$inferSelect;
+export type InsertServiceCall = z.infer<typeof insertServiceCallSchema>;
 
 export type CabBookingWithVehicle = CabBooking & { vehicle: Vehicle | null; vendor: Vendor | null };

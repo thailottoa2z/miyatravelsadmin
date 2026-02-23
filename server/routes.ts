@@ -4,19 +4,51 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
+import cookieParser from "cookie-parser";
+import {
+  handleLogin,
+  handleLogout,
+  authMiddleware,
+  requireAuth,
+  handleGetSession,
+} from "./auth";
+import {
+  getServiceCalls,
+  getServiceCall,
+  createServiceCall,
+  updateServiceCall,
+  deleteServiceCall,
+  getServiceCallStats,
+} from "./servicecall";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Middleware
+  app.use(cookieParser());
+  app.use(authMiddleware);
+
+  // === AUTHENTICATION ===
+  app.post("/api/auth/login", handleLogin);
+  app.post("/api/auth/logout", handleLogout);
+  app.get("/api/auth/session", handleGetSession);
+
+  // === SERVICE CALLS ===
+  app.get("/api/servicecalls", requireAuth, getServiceCalls);
+  app.get("/api/servicecalls/:id", requireAuth, getServiceCall);
+  app.post("/api/servicecalls", requireAuth, createServiceCall);
+  app.put("/api/servicecalls/:id", requireAuth, updateServiceCall);
+  app.delete("/api/servicecalls/:id", requireAuth, deleteServiceCall);
+  app.get("/api/servicecalls/stats/all", requireAuth, getServiceCallStats);
 
   // === CASH ===
-  app.get(api.cash.list.path, async (req, res) => {
+  app.get(api.cash.list.path, requireAuth, async (req, res) => {
     const transactions = await storage.getCashTransactions();
     res.json(transactions);
   });
 
-  app.post(api.cash.create.path, async (req, res) => {
+  app.post(api.cash.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.cash.create.input.parse(req.body);
       const transaction = await storage.createCashTransaction(input);
@@ -29,18 +61,18 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.cash.stats.path, async (req, res) => {
+  app.get(api.cash.stats.path, requireAuth, async (req, res) => {
     const stats = await storage.getCashStats();
     res.json(stats);
   });
 
   // === FLIGHTS ===
-  app.get(api.flights.list.path, async (req, res) => {
+  app.get(api.flights.list.path, requireAuth, async (req, res) => {
     const flights = await storage.getFlightBookings();
     res.json(flights);
   });
 
-  app.post(api.flights.create.path, async (req, res) => {
+  app.post(api.flights.create.path, requireAuth, async (req, res) => {
     try {
       if (req.body.reminderDate === "") req.body.reminderDate = null;
       if (req.body.reminderNote === "") req.body.reminderNote = null;
@@ -58,7 +90,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.flights.update.path, async (req, res) => {
+  app.put(api.flights.update.path, requireAuth, async (req, res) => {
     try {
       if (req.body.reminderDate === "") req.body.reminderDate = null;
       if (req.body.reminderNote === "") req.body.reminderNote = null;
@@ -77,18 +109,18 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.flights.delete.path, async (req, res) => {
+  app.delete(api.flights.delete.path, requireAuth, async (req, res) => {
     await storage.deleteFlightBooking(Number(req.params.id));
     res.sendStatus(204);
   });
 
   // === VEHICLES ===
-  app.get(api.vehicles.list.path, async (req, res) => {
+  app.get(api.vehicles.list.path, requireAuth, async (req, res) => {
     const v = await storage.getVehicles();
     res.json(v);
   });
 
-  app.post(api.vehicles.create.path, async (req, res) => {
+  app.post(api.vehicles.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.vehicles.create.input.parse(req.body);
       const vehicle = await storage.createVehicle(input);
@@ -102,12 +134,12 @@ export async function registerRoutes(
   });
 
   // === CAB BOOKINGS ===
-  app.get(api.cabBookings.list.path, async (req, res) => {
+  app.get(api.cabBookings.list.path, requireAuth, async (req, res) => {
     const bookings = await storage.getCabBookings();
     res.json(bookings);
   });
 
-  app.post(api.cabBookings.create.path, async (req, res) => {
+  app.post(api.cabBookings.create.path, requireAuth, async (req, res) => {
     try {
       if (req.body.reminderDate === "") req.body.reminderDate = null;
       if (req.body.reminderNote === "") req.body.reminderNote = null;
@@ -125,7 +157,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.cabBookings.update.path, async (req, res) => {
+  app.put(api.cabBookings.update.path, requireAuth, async (req, res) => {
     try {
       if (req.body.reminderDate === "") req.body.reminderDate = null;
       if (req.body.reminderNote === "") req.body.reminderNote = null;
@@ -144,12 +176,12 @@ export async function registerRoutes(
   });
 
   // === CAB RUNS ===
-  app.get(api.cabRuns.list.path, async (req, res) => {
+  app.get(api.cabRuns.list.path, requireAuth, async (req, res) => {
     const runs = await storage.getCabRuns();
     res.json(runs);
   });
 
-  app.post(api.cabRuns.create.path, async (req, res) => {
+  app.post(api.cabRuns.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.cabRuns.create.input.parse(req.body);
       const run = await storage.createCabRun(input);
@@ -162,7 +194,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.cabRuns.update.path, async (req, res) => {
+  app.put(api.cabRuns.update.path, requireAuth, async (req, res) => {
     try {
       const input = api.cabRuns.update.input.parse(req.body);
       const run = await storage.updateCabRun(Number(req.params.id), input);
@@ -177,13 +209,13 @@ export async function registerRoutes(
   });
 
   // === VISA ===
-  app.get(api.visa.list.path, async (req, res) => {
+  app.get(api.visa.list.path, requireAuth, async (req, res) => {
     const search = req.query.search as string | undefined;
     const visas = await storage.getVisaApplications(search);
     res.json(visas);
   });
 
-  app.post(api.visa.create.path, async (req, res) => {
+  app.post(api.visa.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.visa.create.input.parse(req.body);
       const visa = await storage.createVisaApplication(input);
@@ -196,7 +228,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.visa.update.path, async (req, res) => {
+  app.put(api.visa.update.path, requireAuth, async (req, res) => {
     try {
       const input = api.visa.update.input.parse(req.body);
       const visa = await storage.updateVisaApplication(Number(req.params.id), input);
@@ -225,12 +257,12 @@ export async function registerRoutes(
   });
 
   // === CREDIT CARDS ===
-  app.get(api.creditCards.list.path, async (req, res) => {
+  app.get(api.creditCards.list.path, requireAuth, async (req, res) => {
     const cards = await storage.getCreditCards();
     res.json(cards);
   });
 
-  app.post(api.creditCards.create.path, async (req, res) => {
+  app.post(api.creditCards.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.creditCards.create.input.parse(req.body);
       const card = await storage.createCreditCard(input);
@@ -243,7 +275,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.creditCards.update.path, async (req, res) => {
+  app.put(api.creditCards.update.path, requireAuth, async (req, res) => {
     try {
       const input = api.creditCards.update.input.parse(req.body);
       const card = await storage.updateCreditCard(Number(req.params.id), input);
@@ -257,7 +289,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.creditCards.repay.path, async (req, res) => {
+  app.post(api.creditCards.repay.path, requireAuth, async (req, res) => {
     try {
       const { amount } = api.creditCards.repay.input.parse(req.body);
       const card = await storage.repayCreditCard(Number(req.params.id), amount);
@@ -272,12 +304,12 @@ export async function registerRoutes(
   });
 
   // === VENDORS ===
-  app.get(api.vendors.list.path, async (req, res) => {
+  app.get(api.vendors.list.path, requireAuth, async (req, res) => {
     const v = await storage.getVendors();
     res.json(v);
   });
 
-  app.post(api.vendors.create.path, async (req, res) => {
+  app.post(api.vendors.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.vendors.create.input.parse(req.body);
       const vendor = await storage.createVendor(input);
@@ -290,7 +322,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.vendors.update.path, async (req, res) => {
+  app.put(api.vendors.update.path, requireAuth, async (req, res) => {
     try {
       const input = api.vendors.update.input.parse(req.body);
       const vendor = await storage.updateVendor(Number(req.params.id), input);
@@ -304,7 +336,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post(api.vendors.recordPayment.path, async (req, res) => {
+  app.post(api.vendors.recordPayment.path, requireAuth, async (req, res) => {
     try {
       const input = api.vendors.recordPayment.input.parse(req.body);
       const payment = await storage.recordVendorPayment({
@@ -321,12 +353,12 @@ export async function registerRoutes(
   });
 
   // === ATTESTATION SERVICES ===
-  app.get(api.attestation.list.path, async (req, res) => {
+  app.get(api.attestation.list.path, requireAuth, async (req, res) => {
     const services = await storage.getAttestationServices();
     res.json(services);
   });
 
-  app.post(api.attestation.create.path, async (req, res) => {
+  app.post(api.attestation.create.path, requireAuth, async (req, res) => {
     try {
       const input = api.attestation.create.input.parse(req.body);
       const service = await storage.createAttestationService(input);
@@ -347,7 +379,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put(api.attestation.update.path, async (req, res) => {
+  app.put(api.attestation.update.path, requireAuth, async (req, res) => {
     try {
       if (req.body.referenceName === "") req.body.referenceName = null;
       if (req.body.referencePhone === "") req.body.referencePhone = null;
@@ -363,13 +395,13 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.attestation.delete.path, async (req, res) => {
+  app.delete(api.attestation.delete.path, requireAuth, async (req, res) => {
     await storage.deleteAttestationService(Number(req.params.id));
     res.sendStatus(204);
   });
 
   // === GLOBAL SEARCH ===
-  app.get(api.globalSearch.search.path, async (req, res) => {
+  app.get(api.globalSearch.search.path, requireAuth, async (req, res) => {
     const q = req.query.q as string;
     if (!q) return res.json({ visa: [], flights: [], cabs: [] });
     const results = await storage.searchGlobal(q);
